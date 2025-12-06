@@ -535,15 +535,13 @@ if url:
             tweet_text = f"""
 {market_title_short}
 {selected.get('question', '')}
-📊 TOP 15 HOLDERS COMPARISON
-🟢 YES Side:
+TOP 15 HOLDERS COMPARISON
+🟢YES Side:
 ├ Avg P&L: {yes_pnl_str}
 ├ Capital: ${yes_total_value:,}
-└ Winners: {yes_winners_str}
-🔴 NO Side:
+🔴NO Side:
 ├ Avg P&L: {no_pnl_str}
 ├ Capital: ${no_total_value:,}
-└ Winners: {no_winners_str}
 🔗 {short_url}
 """
             
