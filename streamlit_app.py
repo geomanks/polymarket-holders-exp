@@ -1,5 +1,5 @@
 """
-Polymarket Whale Tracker - SIMPLE & CLEAN VERSION (Visuals Improved, Selectbox for Market Selection)
+Polymarket Position Tracker - CLEAN & READABLE VERSION (Selectbox for Market Selection)
 """
 
 import streamlit as st
@@ -15,7 +15,8 @@ import altair as alt # Import altair for interactive charts
 # ===== PAGE SETUP =====
 # Use a dark theme for a sleek, modern look, and a wider layout.
 st.set_page_config(
-    page_title="Polymarket Top Holders Tracker", 
+    # CHANGE 1: Updated Page Title
+    page_title="Polymarket Market Position Tracker", 
     page_icon="💰", 
     layout="wide", 
     initial_sidebar_state="collapsed"
@@ -151,8 +152,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💰 Polymarket Whale Tracker")
-st.write("Track and analyze the top traders in any Polymarket prediction market. Identify smart money patterns and profitable positions.")
+# CHANGE 2: Updated Main Title
+st.title("💰 Polymarket Market Position Tracker")
+st.write("Track and analyze the **top position holders** in any Polymarket prediction market. Identify smart money patterns and profitable positions.")
 st.divider()
 
 # ===== CORE FUNCTIONS (API functions) =====
@@ -303,7 +305,6 @@ def display_results(df: pd.DataFrame, title: str, color_code: str):
 def run_analysis(selected_market, market_data):
     """Fetches holder data, enriches it, and stores it in session state."""
     condition_id = selected_market.get('conditionId')
-    market_slug = selected_market.get('slug') # Use the specific market slug
 
     with st.status("🔄 **Analyzing Holders...**", expanded=True) as status_box:
         status_box.write("🎣 Fetching top holders for YES and NO outcomes...")
@@ -537,10 +538,11 @@ if url:
             st.markdown("### Capital and Profitability Overview")
             chart_col1, chart_col2 = st.columns(2)
             
-            # Chart 1: Total Capital
+            # Chart 1: Total Capital - FIX APPLIED HERE (order by value)
             base_capital = alt.Chart(comparison_df).encode(
                 x=alt.X('Total_Capital', title='Total Capital ($)', axis=alt.Axis(format='$,.0f')),
-                y=alt.Y('Side', title=None),
+                # FIX: Order the Y axis by Total_Capital descending to ensure the largest bar is at the top
+                y=alt.Y('Side', title=None, sort='-Total_Capital'), 
                 tooltip=['Side', alt.Tooltip('Total_Capital', format='$,.0f')]
             )
             chart_capital = base_capital.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
@@ -650,7 +652,7 @@ TOP HOLDERS ANALYSIS:
 🔴NO Side:
 ├ Avg P&L: {no_pnl_str}
 ├ Capital: ${no_total_value:,}
-#Polymarket #WhaleTracker #Crypto
+#Polymarket #Tracker #PredictionMarkets
 🔗 {short_url}
 """
             
@@ -669,6 +671,6 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown("[![Star on GitHub](https://img.shields.io/github/stars/geomanks/polymarket-holders?style=social)](https://github.com/geomanks/polymarket-holders)")
 with col2:
-    st.markdown("[![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Fgithub.com%2Fgeomanks%2Fpolymarket-holders)](https://twitter.com/intent/tweet?text=Check%20out%20this%20Polymarket%20Whale%20Tracker!&url=https://polymarket-whale-tracker.streamlit.app)")
+    st.markdown("[![Twitter](https://img.shields.io/twitter/url?style=social&url=https%3A%2F%2Fgithub.com%2Fgeomanks%2Fpolymarket-holders)](https://twitter.com/intent/tweet?text=Check%20out%20this%20Polymarket%20Tracker!&url=https://polymarket-whale-tracker.streamlit.app)")
 with col3:
     st.markdown("**Made with ❤️ for the Polymarket community**")
