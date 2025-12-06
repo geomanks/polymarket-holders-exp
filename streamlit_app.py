@@ -553,7 +553,8 @@ if url:
                 tooltip=['Side', alt.Tooltip('Total_Capital', format='$,.0f')]
             )
             chart_capital = base_capital.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
-                color=alt.Color('Side', scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149'])),
+                # FIX: Add legend=None to remove the redundant color legend
+                color=alt.Color('Side', scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149']), legend=None),
             ).properties(title="Total Capital Deployed")
             
             with chart_col1:
@@ -568,9 +569,9 @@ if url:
                 tooltip=['Side', alt.Tooltip('Avg_PNL', format='$,.0f')]
             )
             
-            # FIX: Use the primary color encoding for the bar based on Side, and hide the legend.
             chart_pnl = base_pnl.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
-                # Primary color mapping: YES (Green), NO (Red). Legend is hidden.
+                # FIX: Use the primary color encoding for the bar based on Side, and hide the legend.
+                # This ensures YES is GREEN and NO is RED as the base color.
                 color=alt.Color('Side:N', 
                                 scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149']),
                                 legend=None), 
