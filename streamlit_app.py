@@ -410,7 +410,7 @@ url = st.text_input("**🔗 Paste Polymarket Market URL:**",
 if url != st.session_state['current_url']:
     st.session_state['current_url'] = url
     # Clear old analysis data when URL changes
-    for key in ['analysis_yes_data', 'analysis_no_data', 'analysis_slug', 'analysis_market_title', 'share_image']:
+    for key in ['analysis_yes_data', 'analysis_no_data', 'analysis_slug', 'analysis_market_title', 'share_image', 'image_generated']:
         if key in st.session_state:
             del st.session_state[key]
 
@@ -638,8 +638,12 @@ if url:
             st.markdown("**Share your analysis on Twitter!**")
             st.markdown("Click below to generate a summary image and share it with your followers.")
             
-            # Generate image button - use session state data
-            if st.button("📸 Generate Share Image", type="primary", key="generate_img"):
+            # Use a form to prevent immediate rerun
+            with st.form(key="twitter_share_form"):
+                submit_button = st.form_submit_button("📸 Generate Share Image", type="primary", use_container_width=True)
+            
+            # Handle form submission
+            if submit_button:
                 try:
                     # Get data from session state
                     df_yes_for_img = pd.DataFrame(st.session_state.get('analysis_yes_data', yes_data))
@@ -654,41 +658,7 @@ if url:
                         st.session_state['share_image'] = img_buffer.getvalue()
                         st.session_state['share_slug'] = slug_for_img
                         st.session_state['share_title'] = market_title
-                        
-                        # Display immediately after generation
-                        st.success("✅ Image generated successfully!")
-                        st.image(st.session_state['share_image'], caption="Preview - Download and share on Twitter!", use_container_width=True)
-                        
-                        col1, col2 = st.columns(2)
-                        
-                        with col1:
-                            # Download button
-                            st.download_button(
-                                label="💾 Download Image",
-                                data=st.session_state['share_image'],
-                                file_name=f"polymarket_analysis_{st.session_state['share_slug']}.png",
-                                mime="image/png",
-                                use_container_width=True,
-                                key="download_img"
-                            )
-                        
-                        with col2:
-                            # Twitter share button
-                            market_url = f"https://polymarket.com/event/{st.session_state['share_slug']}"
-                            tweet_text = f"🐋 Whale Analysis: {st.session_state['share_title'][:80]}...\n\nCheck out who's betting big on Polymarket!\n\n"
-                            twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(market_url)}"
-                            
-                            st.link_button("🐦 Share on Twitter", twitter_url, use_container_width=True)
-                        
-                        st.markdown("""
-                        **💡 Tip:** Download the image first, then click 'Share on Twitter' and attach the image to your tweet!
-                        
-                        **What's included in the image:**
-                        - Top 3 YES and NO holders with their all-time P&L
-                        - Key metrics for both sides
-                        - Smart money indicator
-                        - Professional branding
-                        """)
+                        st.session_state['image_generated'] = True
                         
                 except Exception as e:
                     st.error(f"❌ Error generating image: {str(e)}")
@@ -696,7 +666,8 @@ if url:
                     st.code(traceback.format_exc())
             
             # Display image and buttons if already generated (from session state)
-            elif 'share_image' in st.session_state and st.session_state.get('share_slug') == slug:
+            if st.session_state.get('image_generated') and st.session_state.get('share_slug') == slug:
+                st.success("✅ Image generated successfully!")
                 st.image(st.session_state['share_image'], caption="Preview - Download and share on Twitter!", use_container_width=True)
                 
                 col1, col2 = st.columns(2)
@@ -709,7 +680,7 @@ if url:
                         file_name=f"polymarket_analysis_{st.session_state['share_slug']}.png",
                         mime="image/png",
                         use_container_width=True,
-                        key="download_img_cached"
+                        key="download_img"
                     )
                 
                 with col2:
@@ -718,7 +689,7 @@ if url:
                     tweet_text = f"🐋 Whale Analysis: {st.session_state['share_title'][:80]}...\n\nCheck out who's betting big on Polymarket!\n\n"
                     twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(market_url)}"
                     
-                    st.link_button("🐦 Share on Twitter", twitter_url, use_container_width=True, key="twitter_cached")
+                    st.link_button("🐦 Share on Twitter", twitter_url, use_container_width=True)
                 
                 st.markdown("""
                 **💡 Tip:** Download the image first, then click 'Share on Twitter' and attach the image to your tweet!
@@ -729,7 +700,7 @@ if url:
                 - Smart money indicator
                 - Professional branding
                 """)
-            else:
+            elif not st.session_state.get('image_generated'):
                 st.info("💡 **Tip:** Click the button above to generate a shareable image with top holders and metrics")
 
 st.markdown("---")
