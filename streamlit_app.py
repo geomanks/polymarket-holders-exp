@@ -529,17 +529,18 @@ if url:
             
             comparison_data = {
                 'Side': ['YES', 'NO'],
-                # Keep this logic as it converts potential NaN means to 0, which Altair accepts.
+                # Aggressive NaN conversion to 0.0 for dictionary creation
                 'Avg_PNL': [yes_avg_pnl if pd.notna(yes_avg_pnl) else 0.0, no_avg_pnl if pd.notna(no_avg_pnl) else 0.0],
-                'Total_Capital': [yes_total_value, no_total_value],
-                'Win_Rate': [yes_win_rate, no_win_rate]
+                'Total_Capital': [yes_total_value if pd.notna(yes_total_value) else 0.0, no_total_value if pd.notna(no_total_value) else 0.0],
+                'Win_Rate': [yes_win_rate if pd.notna(yes_win_rate) else 0.0, no_win_rate if pd.notna(no_win_rate) else 0.0]
             }
             comparison_df = pd.DataFrame(comparison_data)
             
-            # **CRITICAL FIX:** Ensure all numerical columns are standard float type 
-            # and fill any remaining NaNs (though our logic above should prevent it)
-            comparison_df['Total_Capital'] = comparison_df['Total_Capital'].astype(float)
-            comparison_df['Avg_PNL'] = comparison_df['Avg_PNL'].astype(float)
+            # **AGGRESSIVE FIX FOR SchemaValidationError:** Ensure all numerical columns are standard float type 
+            # and explicitly replace any edge-case NaNs with 0.0 before charting.
+            comparison_df['Total_Capital'] = comparison_df['Total_Capital'].astype(float).fillna(0.0)
+            comparison_df['Avg_PNL'] = comparison_df['Avg_PNL'].astype(float).fillna(0.0)
+            comparison_df['Win_Rate'] = comparison_df['Win_Rate'].astype(float).fillna(0.0)
 
 
             st.markdown("### Capital and Profitability Overview")
