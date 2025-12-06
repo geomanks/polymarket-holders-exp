@@ -120,10 +120,6 @@ st.markdown("""
         overflow: hidden !important;
     }
     
-    .stDataFrame [data-testid="stDataFrameResizable"] {
-        background: rgba(255, 255, 255, 0.02) !important;
-    }
-    
     /* Table Headers */
     .stDataFrame thead tr th {
         background: rgba(99, 102, 241, 0.2) !important; /* Slightly darker header */
@@ -546,7 +542,7 @@ if url:
             st.markdown("### Capital and Profitability Overview")
             chart_col1, chart_col2 = st.columns(2)
             
-            # Chart 1: Total Capital - (Order fix already applied)
+            # Chart 1: Total Capital 
             base_capital = alt.Chart(comparison_df).encode(
                 x=alt.X('Total_Capital:Q', # Explicitly set as Quantitative
                         title='Total Capital ($)', 
@@ -568,23 +564,16 @@ if url:
                 x=alt.X('Avg_PNL:Q', # Explicitly set as Quantitative
                         title='Avg All-Time P&L ($)', 
                         axis=alt.Axis(format='$,.0f')),
-                # FIX 1: Explicitly set Y as Nominal.
-                y=alt.Y('Side:N', title=None), 
-                # FIX 2: Set color scale explicitly to GREEN for YES and RED for NO, and hide the legend
-                color=alt.Color('Side:N', 
-                                scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149']),
-                                legend=None),
+                y=alt.Y('Side:N', title=None), # Explicitly set as Nominal
                 tooltip=['Side', alt.Tooltip('Avg_PNL', format='$,.0f')]
             )
             
-            # Use conditional color for the bar based on P&L value (positive/negative)
+            # FIX: Use the primary color encoding for the bar based on Side, and hide the legend.
             chart_pnl = base_pnl.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
-                # We use the conditional color only for the bar fill property, keeping the color mapping for the legend hidden above.
-                color=alt.condition(
-                    alt.datum.Avg_PNL < 0,
-                    alt.value('#f85149'), # Red for negative
-                    alt.value('#38b449')  # Green for positive
-                )
+                # Primary color mapping: YES (Green), NO (Red). Legend is hidden.
+                color=alt.Color('Side:N', 
+                                scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149']),
+                                legend=None), 
             ).properties(title="Average All-Time Trader Profitability")
             
             with chart_col2:
