@@ -409,9 +409,13 @@ def display_results(df: pd.DataFrame, title: str, color_code: str):
 if 'current_url' not in st.session_state:
     st.session_state['current_url'] = ""
 
-url = st.text_input("**🔗 Paste Polymarket Market URL:**", 
-                    value=st.session_state['current_url'],
-                    placeholder="e.g., https://polymarket.com/event/will-tory-retain-power...")
+st.markdown("### 🔗 Enter Market URL")
+url = st.text_input(
+    "Polymarket Market URL:", 
+    value=st.session_state['current_url'],
+    placeholder="https://polymarket.com/event/...",
+    label_visibility="collapsed"
+)
 
 # Update session state when URL changes
 if url != st.session_state['current_url']:
@@ -434,31 +438,39 @@ if url:
         st.error(f"Failed to fetch market data: {e}")
         st.stop()
         
-    st.success(f"**Market Title:** {market_data.get('title')}")
+    st.markdown("##")
+    st.success(f"✅ **{market_data.get('title')}**")
     
     markets = [m for m in market_data.get('markets', []) if m.get('enableOrderBook')]
     if not markets:
         st.error("No yes/no markets found in this event.")
         st.stop()
     
+    # Market selection with better styling
+    st.markdown("##")
     if len(markets) > 1:
+        st.markdown("### 📊 Market Selection")
+        st.info(f"This event has **{len(markets)}** sub-markets. Select one to analyze:")
         options = [m.get('question', f'Market {i}') for i, m in enumerate(markets, 1)]
         selected_question = st.selectbox(
-            "**Select specific market to analyze:**", 
+            "Choose market:", 
             options,
-            key="market_select"
+            key="market_select",
+            label_visibility="collapsed"
         )
         idx = options.index(selected_question)
         selected = markets[idx]
     else:
         selected = markets[0]
-        st.info(f"**Market Question:** {selected.get('question')}")
+        st.markdown("### 📊 Market Question")
+        st.info(f"**{selected.get('question')}**")
     
-    st.markdown("---") # Use custom styled divider
+    st.markdown("##")
     
-    if st.button("🔍 **ANALYZE WHALES**", type="primary", use_container_width=True):
+    if st.button("🔍 ANALYZE MARKET", type="primary", use_container_width=True):
         condition_id = selected.get('conditionId')
         
+        # Fetch holders data
         with st.spinner("🎣 Fetching top holders for YES and NO outcomes..."):
             try:
                 holders_data = fetch_holders(condition_id)
@@ -473,44 +485,65 @@ if url:
                 if holders[0].get('outcomeIndex') == 0:
                     yes_raw = holders[:15]
                 else:
-                    # Skip first NO holder (index 0) due to API bug, take next 15
-                    no_raw = holders[1:16]  # Skip index 0, take indices 1-15
+                    no_raw = holders[1:16]
         
-        # YES HOLDERS
-        st.markdown("##") # Add vertical space
+        # Combined analysis section
         st.markdown("---")
-        st.subheader("🟢 Analyzing YES Holders...")
+        st.markdown("### 🔄 Analyzing Holders")
+        st.write("Fetching position data and all-time P&L for all holders...")
+        
+        # Create progress tracking
+        total_holders = len(yes_raw) + len(no_raw)
+        progress_bar = st.progress(0, text="Starting analysis...")
+        status_text = st.empty()
         
         yes_data = []
-        total_yes = len(yes_raw)
+        no_data = []
+        current_holder = 0
         
-        # Create container for progress
-        progress_container = st.empty()
-        status_container = st.empty()
-        
+        # Analyze YES holders
+        status_text.info("🟢 **Analyzing YES holders...**")
         for i, h in enumerate(yes_raw):
-            # Update status message
+            current_holder += 1
             holder_name = h.get('name') or h.get('proxyWallet', 'Unknown')[:10]
-            status_container.info(f"📊 Analyzing: **{holder_name}** ({i+1}/{total_yes})")
-            
-            # Update progress bar with percentage
-            percentage = int(((i + 1) / total_yes) * 100)
-            progress_container.progress((i+1)/total_yes, text=f"Progress: {percentage}% - Fetching position data & all-time P&L...")
+            percentage = int((current_holder / total_holders) * 100)
+            progress_bar.progress(current_holder/total_holders, 
+                                text=f"Progress: {percentage}% - YES Holder: {holder_name} ({i+1}/{len(yes_raw)})")
             
             enriched = enrich_holder(h, condition_id)
             if enriched:
                 yes_data.append(enriched)
             time.sleep(0.15)
         
-        # Clear progress indicators
-        progress_container.empty()
-        status_container.empty()
+        # Analyze NO holders
+        status_text.info("🔴 **Analyzing NO holders...**")
+        for i, h in enumerate(no_raw):
+            current_holder += 1
+            holder_name = h.get('name') or h.get('proxyWallet', 'Unknown')[:10]
+            percentage = int((current_holder / total_holders) * 100)
+            progress_bar.progress(current_holder/total_holders, 
+                                text=f"Progress: {percentage}% - NO Holder: {holder_name} ({i+1}/{len(no_raw)})")
+            
+            enriched = enrich_holder(h, condition_id)
+            if enriched:
+                no_data.append(enriched)
+            time.sleep(0.15)
         
+        # Clear progress indicators
+        progress_bar.empty()
+        status_text.empty()
+        
+        # Success message
+        st.success("✅ Analysis Complete!")
+        
+        st.markdown("---")
+        st.markdown("##")
+        
+        # Display YES results
         if yes_data:
             df_yes = pd.DataFrame(yes_data)
             display_results(df_yes, "YES Holders (Top 15)", "🟢")
             
-            # Add download button
             csv_yes = df_yes.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Download YES Holders CSV",
@@ -521,41 +554,16 @@ if url:
         else:
             st.warning("No significant YES holders found.")
         
-        # NO HOLDERS
-        st.markdown("##") # Add vertical space
+        # Add spacing
+        st.markdown("##")
         st.markdown("---")
-        st.subheader("🔴 Analyzing NO Holders...")
+        st.markdown("##")
         
-        no_data = []
-        total_no = len(no_raw)
-        
-        # Create container for progress
-        progress_container = st.empty()
-        status_container = st.empty()
-        
-        for i, h in enumerate(no_raw):
-            # Update status message
-            holder_name = h.get('name') or h.get('proxyWallet', 'Unknown')[:10]
-            status_container.info(f"📊 Analyzing: **{holder_name}** ({i+1}/{total_no})")
-            
-            # Update progress bar with percentage
-            percentage = int(((i + 1) / total_no) * 100)
-            progress_container.progress((i+1)/total_no, text=f"Progress: {percentage}% - Fetching position data & all-time P&L...")
-            
-            enriched = enrich_holder(h, condition_id)
-            if enriched:
-                no_data.append(enriched)
-            time.sleep(0.15)
-        
-        # Clear progress indicators
-        progress_container.empty()
-        status_container.empty()
-        
+        # Display NO results
         if no_data:
             df_no = pd.DataFrame(no_data)
             display_results(df_no, "NO Holders (Top 15)", "🔴")
             
-            # Add download button
             csv_no = df_no.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Download NO Holders CSV",
@@ -565,10 +573,6 @@ if url:
             )
         else:
             st.warning("No significant NO holders found.")
-
-        st.markdown("---")
-        st.balloons()
-        st.success("✅ Analysis Complete!")
         
         # Store data in session state for Twitter share functionality
         st.session_state['analysis_yes_data'] = yes_data
