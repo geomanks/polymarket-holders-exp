@@ -8,9 +8,6 @@ import re
 import time
 import pandas as pd
 from typing import Optional, List, Dict
-import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
-from io import BytesIO
 import urllib.parse
 
 # ===== PAGE SETUP =====
@@ -635,73 +632,58 @@ if url:
             st.markdown("---")
             st.header("🐦 Share on Twitter")
             
-            st.markdown("**Share your analysis on Twitter!**")
-            st.markdown("Click below to generate a summary image and share it with your followers.")
+            # Create a nicely formatted text table for Twitter
+            market_title_short = market_data.get('title')[:60] + "..." if len(market_data.get('title')) > 60 else market_data.get('title')
             
-            # Use a form to prevent immediate rerun
-            with st.form(key="twitter_share_form"):
-                submit_button = st.form_submit_button("📸 Generate Share Image", type="primary", use_container_width=True)
+            # Determine smart money verdict
+            if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl):
+                if yes_avg_pnl > no_avg_pnl:
+                    diff = yes_avg_pnl - no_avg_pnl
+                    verdict = f"YES holders +${diff:,.0f} more profitable"
+                    winner_emoji = "🟢"
+                elif no_avg_pnl > yes_avg_pnl:
+                    diff = no_avg_pnl - yes_avg_pnl
+                    verdict = f"NO holders +${diff:,.0f} more profitable"
+                    winner_emoji = "🔴"
+                else:
+                    verdict = "Both sides equally profitable"
+                    winner_emoji = "⚖️"
+            else:
+                verdict = "Insufficient data"
+                winner_emoji = "❓"
             
-            # Handle form submission
-            if submit_button:
-                try:
-                    # Get data from session state
-                    df_yes_for_img = pd.DataFrame(st.session_state.get('analysis_yes_data', yes_data))
-                    df_no_for_img = pd.DataFrame(st.session_state.get('analysis_no_data', no_data))
-                    market_title = st.session_state.get('analysis_market_title', market_data.get('title'))
-                    slug_for_img = st.session_state.get('analysis_slug', slug)
-                    
-                    with st.spinner("🎨 Creating summary image..."):
-                        img_buffer = generate_summary_image(market_title, df_yes_for_img, df_no_for_img)
-                        
-                        # Store in session state
-                        st.session_state['share_image'] = img_buffer.getvalue()
-                        st.session_state['share_slug'] = slug_for_img
-                        st.session_state['share_title'] = market_title
-                        st.session_state['image_generated'] = True
-                        
-                except Exception as e:
-                    st.error(f"❌ Error generating image: {str(e)}")
-                    import traceback
-                    st.code(traceback.format_exc())
+            # Create the tweet text with nice formatting
+            tweet_text = f"""🐋 Polymarket Whale Analysis
+{market_title_short}
+
+📊 TOP 15 HOLDERS COMPARISON
+
+🟢 YES Side:
+├ Avg P&L: ${yes_avg_pnl:,.0f if pd.notna(yes_avg_pnl) else 'N/A'}
+├ Capital: ${yes_total_value:,}
+└ Winners: {profitable_yes}/{total_yes} ({(profitable_yes/total_yes*100):.0f}%{')' if total_yes > 0 else 'N/A)'}
+
+🔴 NO Side:
+├ Avg P&L: ${no_avg_pnl:,.0f if pd.notna(no_avg_pnl) else 'N/A'}
+├ Capital: ${no_total_value:,}
+└ Winners: {profitable_no}/{total_no} ({(profitable_no/total_no*100):.0f}%{')' if total_no > 0 else 'N/A)'}
+
+{winner_emoji} Smart Money: {verdict}
+
+🔗 https://polymarket.com/event/{slug}
+
+#Polymarket #PredictionMarkets"""
             
-            # Display image and buttons if already generated (from session state)
-            if st.session_state.get('image_generated') and st.session_state.get('share_slug') == slug:
-                st.success("✅ Image generated successfully!")
-                st.image(st.session_state['share_image'], caption="Preview - Download and share on Twitter!", use_container_width=True)
-                
-                col1, col2 = st.columns(2)
-                
-                with col1:
-                    # Download button
-                    st.download_button(
-                        label="💾 Download Image",
-                        data=st.session_state['share_image'],
-                        file_name=f"polymarket_analysis_{st.session_state['share_slug']}.png",
-                        mime="image/png",
-                        use_container_width=True,
-                        key="download_img"
-                    )
-                
-                with col2:
-                    # Twitter share button
-                    market_url = f"https://polymarket.com/event/{st.session_state['share_slug']}"
-                    tweet_text = f"🐋 Whale Analysis: {st.session_state['share_title'][:80]}...\n\nCheck out who's betting big on Polymarket!\n\n"
-                    twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(market_url)}"
-                    
-                    st.link_button("🐦 Share on Twitter", twitter_url, use_container_width=True)
-                
-                st.markdown("""
-                **💡 Tip:** Download the image first, then click 'Share on Twitter' and attach the image to your tweet!
-                
-                **What's included in the image:**
-                - Top 3 YES and NO holders with their all-time P&L
-                - Key metrics for both sides
-                - Smart money indicator
-                - Professional branding
-                """)
-            elif not st.session_state.get('image_generated'):
-                st.info("💡 **Tip:** Click the button above to generate a shareable image with top holders and metrics")
+            # Display the tweet preview
+            st.markdown("### 📝 Your Tweet (Ready to Post!)")
+            st.code(tweet_text, language=None)
+            
+            # Create the Twitter URL with encoded text
+            twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}"
+            
+            st.link_button("🐦 Post to Twitter", twitter_url, use_container_width=True, type="primary")
+            
+            st.success("✅ Click the button above - your tweet is ready! Twitter will open with this text pre-filled.")
 
 st.markdown("---")
 st.caption("A tool for tracking large positions on Polymarket. Data fetched via Polymarket APIs. [GitHub Repository](https://github.com/geomanks/polymarket-holders)")
