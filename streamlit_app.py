@@ -546,11 +546,15 @@ if url:
             st.markdown("### Capital and Profitability Overview")
             chart_col1, chart_col2 = st.columns(2)
             
-            # Chart 1: Total Capital - FIX APPLIED HERE (order by value)
+            # Chart 1: Total Capital - FIX APPLIED HERE (Explicit Type and Sorting)
             base_capital = alt.Chart(comparison_df).encode(
-                x=alt.X('Total_Capital', title='Total Capital ($)', axis=alt.Axis(format='$,.0f')),
-                # FIX: Order the Y axis by Total_Capital descending to ensure the largest bar is at the top
-                y=alt.Y('Side', title=None, sort='-Total_Capital'), 
+                x=alt.X('Total_Capital:Q', # Explicitly set as Quantitative
+                        title='Total Capital ($)', 
+                        axis=alt.Axis(format='$,.0f')),
+                # FIX: Explicitly set Y as Nominal and sort by the quantitative Total_Capital field
+                y=alt.Y('Side:N', 
+                        title=None, 
+                        sort=alt.EncodingSortField(field='Total_Capital', op='max', order='descending')),
                 tooltip=['Side', alt.Tooltip('Total_Capital', format='$,.0f')]
             )
             chart_capital = base_capital.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
@@ -560,10 +564,12 @@ if url:
             with chart_col1:
                 st.altair_chart(chart_capital, use_container_width=True)
                 
-            # Chart 2: Average All-Time P&L
+            # Chart 2: Average All-Time P&L - Applying the same type explicit setting for robustness
             base_pnl = alt.Chart(comparison_df).encode(
-                x=alt.X('Avg_PNL', title='Avg All-Time P&L ($)', axis=alt.Axis(format='$,.0f')),
-                y=alt.Y('Side', title=None),
+                x=alt.X('Avg_PNL:Q', # Explicitly set as Quantitative
+                        title='Avg All-Time P&L ($)', 
+                        axis=alt.Axis(format='$,.0f')),
+                y=alt.Y('Side:N', title=None), # Explicitly set as Nominal
                 color=alt.Color('Side', scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149'])),
                 tooltip=['Side', alt.Tooltip('Avg_PNL', format='$,.0f')]
             )
