@@ -524,26 +524,20 @@ if url:
             no_winners_str = f"{profitable_no}/{total_no} ({(profitable_no/total_no*100):.0f}%)" if total_no > 0 else "N/A"
             
             # Create the tweet text with nice formatting
-tweet_text = f"""
+            tweet_text = f"""
 {market_title_short}
 {selected.get('question', '')}
-
 📊 TOP 15 HOLDERS COMPARISON
-
 🟢 YES Side:
 ├ Avg P&L: {yes_pnl_str}
 ├ Capital: ${yes_total_value:,}
 └ Winners: {yes_winners_str}
-
 🔴 NO Side:
 ├ Avg P&L: {no_pnl_str}
 ├ Capital: ${no_total_value:,}
 └ Winners: {no_winners_str}
-
-
-
 🔗 https://polymarket.com/event/{slug}
-
+"""
 """
             
             # Display the tweet preview
