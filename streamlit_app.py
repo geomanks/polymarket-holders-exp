@@ -517,6 +517,12 @@ if url:
                 verdict = "Insufficient data"
                 winner_emoji = "❓"
             
+            # Format values before putting them in the tweet
+            yes_pnl_str = f"${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "N/A"
+            no_pnl_str = f"${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "N/A"
+            yes_winners_str = f"{profitable_yes}/{total_yes} ({(profitable_yes/total_yes*100):.0f}%)" if total_yes > 0 else "N/A"
+            no_winners_str = f"{profitable_no}/{total_no} ({(profitable_no/total_no*100):.0f}%)" if total_no > 0 else "N/A"
+            
             # Create the tweet text with nice formatting
             tweet_text = f"""🐋 Polymarket Whale Analysis
 {market_title_short}
@@ -524,14 +530,14 @@ if url:
 📊 TOP 15 HOLDERS COMPARISON
 
 🟢 YES Side:
-├ Avg P&L: ${yes_avg_pnl:,.0f if pd.notna(yes_avg_pnl) else 'N/A'}
+├ Avg P&L: {yes_pnl_str}
 ├ Capital: ${yes_total_value:,}
-└ Winners: {profitable_yes}/{total_yes} ({(profitable_yes/total_yes*100):.0f}%{')' if total_yes > 0 else 'N/A)'}
+└ Winners: {yes_winners_str}
 
 🔴 NO Side:
-├ Avg P&L: ${no_avg_pnl:,.0f if pd.notna(no_avg_pnl) else 'N/A'}
+├ Avg P&L: {no_pnl_str}
 ├ Capital: ${no_total_value:,}
-└ Winners: {profitable_no}/{total_no} ({(profitable_no/total_no*100):.0f}%{')' if total_no > 0 else 'N/A)'}
+└ Winners: {no_winners_str}
 
 {winner_emoji} Smart Money: {verdict}
 
