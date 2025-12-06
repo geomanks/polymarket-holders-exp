@@ -1,5 +1,5 @@
 """
-Polymarket Whale Tracker - SIMPLE & CLEAN VERSION (Visuals Improved, Interaction Enhanced, Tabs for Market Selection)
+Polymarket Whale Tracker - SIMPLE & CLEAN VERSION (Visuals Improved, Selectbox for Market Selection)
 """
 
 import streamlit as st
@@ -64,10 +64,9 @@ st.markdown("""
         margin-top: 2rem !important;
     }
     
-    /* Input Fields */
+    /* --- Input/Selectbox Styling (Refined for better readability) --- */
     .stTextInput > div > div > input,
-    .stSelectbox > div > div > select,
-    .stRadio > label { /* Target radio labels for interaction */
+    .stSelectbox > div > div > button { /* Target the Selectbox button/display area */
         background-color: rgba(255, 255, 255, 0.05) !important;
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
         border-radius: 8px !important;
@@ -75,7 +74,13 @@ st.markdown("""
         font-size: 0.95rem !important;
         padding: 0.75rem !important;
         transition: all 0.2s ease !important;
-        margin-bottom: 0.5rem; /* Spacing for radio buttons */
+        min-height: 50px !important; /* Make it taller for better feel */
+        text-align: left !important;
+    }
+    
+    .stSelectbox > div > div > button:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
     }
 
     /* Primary Button - Same good style */
@@ -107,43 +112,6 @@ st.markdown("""
         box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
     
-    /* Tab Styling (for market selection) */
-    button[data-baseweb="tab"] {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-        border-radius: 8px 8px 0 0 !important;
-        color: #d1d5db !important;
-        font-weight: 500 !important;
-        margin-right: 5px !important;
-        padding: 10px 20px !important;
-        border: 1px solid transparent !important;
-        border-bottom: 2px solid transparent !important;
-        transition: all 0.2s ease !important;
-    }
-
-    button[data-baseweb="tab"]:hover {
-        background-color: rgba(255, 255, 255, 0.08) !important;
-        color: #ffffff !important;
-    }
-
-    /* Active Tab */
-    button[data-baseweb="tab"][aria-selected="true"] {
-        background-color: #1a1f3a !important; /* Slightly lighter background than page for contrast */
-        border-top: 2px solid #6366f1 !important;
-        border-left: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
-        border-bottom: 2px solid #1a1f3a !important; /* Hide line at bottom */
-        color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Tab Content Styling */
-    div[data-baseweb="tab-panel"] {
-        background-color: #1a1f3a !important;
-        border-radius: 0 8px 8px 8px !important;
-        padding: 20px !important;
-        border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    }
-
     /* DataFrames */
     .stDataFrame {
         border: 1px solid rgba(255, 255, 255, 0.08) !important;
@@ -180,7 +148,6 @@ st.markdown("""
         border-radius: 8px;
     }
     
-
 </style>
 """, unsafe_allow_html=True)
 
@@ -333,9 +300,10 @@ def display_results(df: pd.DataFrame, title: str, color_code: str):
     )
 
 # --- Function to run analysis (extracted for clarity) ---
-def run_analysis(selected_market):
+def run_analysis(selected_market, market_data):
     """Fetches holder data, enriches it, and stores it in session state."""
     condition_id = selected_market.get('conditionId')
+    market_slug = selected_market.get('slug') # Use the specific market slug
 
     with st.status("🔄 **Analyzing Holders...**", expanded=True) as status_box:
         status_box.write("🎣 Fetching top holders for YES and NO outcomes...")
@@ -392,21 +360,22 @@ def run_analysis(selected_market):
         
         progress_bar.empty()
         
-        # Store data using the market's slug to ensure data uniqueness per market
-        market_slug = selected_market.get('slug')
-        st.session_state[f'analysis_yes_data_{market_slug}'] = yes_data
-        st.session_state[f'analysis_no_data_{market_slug}'] = no_data
-        
+        # Store data using the market's conditionId (since it's unique per market)
+        st.session_state[f'analysis_yes_data_{condition_id}'] = yes_data
+        st.session_state[f'analysis_no_data_{condition_id}'] = no_data
+        st.session_state['analysis_market_title'] = market_data.get('title') # Store event title
+
         status_box.update(label="✅ Analysis Complete!", state="complete", expanded=False)
 
-# ===== MAIN APP (Updated for Tabs) =====
+# ===== MAIN APP EXECUTION =====
 
 # Initialize session state for URL and market selection
 if 'current_url' not in st.session_state:
     st.session_state['current_url'] = ""
 if 'market_data' not in st.session_state:
     st.session_state['market_data'] = {}
-# No need for selected_market_index, as st.tabs handles the selection state
+if 'selected_market_index' not in st.session_state:
+    st.session_state['selected_market_index'] = 0
 
 url = st.text_input(
     "🔗 Polymarket Event URL:", 
@@ -421,7 +390,7 @@ def clear_analysis_data():
     for key in keys_to_delete:
         del st.session_state[key]
     st.session_state['market_data'] = {} 
-    # Remove all market slugs from analysis state
+    st.session_state['selected_market_index'] = 0
 
 # Update session state when URL changes
 if url != st.session_state['current_url']:
@@ -454,211 +423,226 @@ if url:
         st.warning("No yes/no markets found in this event.")
         st.stop()
     
+    # --- Interactive Market Selection using Selectbox (Clean & Readable) ---
+    
+    options = [m.get('question', f'Market {i+1}') for i, m in enumerate(markets)]
+    
     st.markdown("### 🎯 Select Market to Analyze")
     
-    # --- Interactive Market Selection using Tabs ---
+    # Use st.selectbox, but use the full question and track the index internally
+    selected_question = st.selectbox(
+        "Choose a market question:", 
+        options,
+        index=st.session_state['selected_market_index'],
+        key="market_select_main",
+        label_visibility="collapsed"
+    )
+
+    # Update the index whenever the selectbox changes
+    idx = options.index(selected_question)
+    st.session_state['selected_market_index'] = idx
+    selected_market = markets[idx]
+    condition_id = selected_market.get('conditionId')
     
-    # Create the tab labels (shortened if necessary)
-    tab_titles = [m.get('question', f'Market {i+1}')[:30] for i, m in enumerate(markets)]
-    
-    # Use st.tabs to create the navigation
-    tabs = st.tabs(tab_titles)
-    
-    for i, tab in enumerate(tabs):
-        with tab:
-            selected_market = markets[i]
-            market_slug = selected_market.get('slug')
-            full_question = selected_market.get('question')
+    st.markdown("---")
+
+    # --- Analysis Trigger ---
+    if st.button(f"🔍 ANALYZE HOLDERS for: **{selected_question}**", type="primary", use_container_width=True):
+        # Clear previous analysis data for this market
+        if f'analysis_yes_data_{condition_id}' in st.session_state:
+            del st.session_state[f'analysis_yes_data_{condition_id}']
+        if f'analysis_no_data_{condition_id}' in st.session_state:
+            del st.session_state[f'analysis_no_data_{condition_id}']
             
-            # --- Display Market Info ---
-            st.markdown(f"**Full Question:** *{full_question}*")
+        run_analysis(selected_market, market_data)
+
+
+    # --- Display Results Section ---
+    
+    # Check if analysis results exist for the currently selected market
+    yes_data = st.session_state.get(f'analysis_yes_data_{condition_id}')
+    no_data = st.session_state.get(f'analysis_no_data_{condition_id}')
+
+    if yes_data or no_data:
+        
+        st.markdown("## Analysis Results")
+        
+        # Display YES results
+        if yes_data:
+            df_yes = pd.DataFrame(yes_data)
+            display_results(df_yes, f"YES Holders (Top {len(df_yes)})", "🟢")
+            
+            csv_yes = df_yes.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download YES Holders CSV",
+                data=csv_yes,
+                file_name=f"polymarket_yes_holders_{slug}_{condition_id}.csv",
+                mime="text/csv",
+                key=f'dl_yes_{condition_id}'
+            )
+        else:
+            st.warning("No significant YES holders found for this market.")
+        
+        st.markdown("##")
+        st.markdown("---")
+        st.markdown("##")
+        
+        # Display NO results
+        if no_data:
+            df_no = pd.DataFrame(no_data)
+            display_results(df_no, f"NO Holders (Top {len(df_no)})", "🔴")
+            
+            csv_no = df_no.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Download NO Holders CSV",
+                data=csv_no,
+                file_name=f"polymarket_no_holders_{slug}_{condition_id}.csv",
+                mime="text/csv",
+                key=f'dl_no_{condition_id}'
+            )
+        else:
+            st.warning("No significant NO holders found for this market.")
+        
+        # ===== COMPARISON SECTION & VISUALIZATION FIXES =====
+        if yes_data and no_data:
+            st.markdown("##")
             st.markdown("---")
+            st.header("⚖️ YES vs NO Comparison Dashboard")
             
-            # --- Analysis Trigger ---
-            if st.button(f"🔍 ANALYZE HOLDERS for Market {i+1}", key=f"analyze_btn_{i}", type="primary", use_container_width=True):
-                # Run the analysis function specific to this market
-                run_analysis(selected_market)
+            # --- 1. Calculate Summary Metrics ---
+            yes_avg_pnl = df_yes['All-Time P&L'].mean()
+            yes_total_value = df_yes['Value'].sum()
+            yes_total_shares = df_yes['Shares'].sum()
+            profitable_yes = len(df_yes[df_yes['All-Time P&L'] > 0])
+            total_yes = len(df_yes[df_yes['All-Time P&L'].notna()])
+            yes_win_rate = (profitable_yes / total_yes) * 100 if total_yes > 0 else 0
             
-            # --- Display Results Section for the CURRENT TAB's market ---
-            
-            # Check if analysis results exist for this specific market slug
-            yes_data = st.session_state.get(f'analysis_yes_data_{market_slug}')
-            no_data = st.session_state.get(f'analysis_no_data_{market_slug}')
+            no_avg_pnl = df_no['All-Time P&L'].mean()
+            no_total_value = df_no['Value'].sum()
+            profitable_no = len(df_no[df_no['All-Time P&L'] > 0])
+            total_no = len(df_no[df_no['All-Time P&L'].notna()])
+            no_win_rate = (profitable_no / total_no) * 100 if total_no > 0 else 0
 
-            if yes_data or no_data:
-                st.markdown("## Analysis Results")
+            
+            # --- 2. Interactive Visualizations (Altair) ---
+            
+            comparison_data = {
+                'Side': ['YES', 'NO'],
+                'Avg_PNL': [yes_avg_pnl if pd.notna(yes_avg_pnl) else 0, no_avg_pnl if pd.notna(no_avg_pnl) else 0],
+                'Total_Capital': [yes_total_value, no_total_value],
+                'Win_Rate': [yes_win_rate, no_win_rate]
+            }
+            comparison_df = pd.DataFrame(comparison_data)
+
+            st.markdown("### Capital and Profitability Overview")
+            chart_col1, chart_col2 = st.columns(2)
+            
+            # Chart 1: Total Capital
+            base_capital = alt.Chart(comparison_df).encode(
+                x=alt.X('Total_Capital', title='Total Capital ($)', axis=alt.Axis(format='$,.0f')),
+                y=alt.Y('Side', title=None),
+                tooltip=['Side', alt.Tooltip('Total_Capital', format='$,.0f')]
+            )
+            chart_capital = base_capital.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
+                color=alt.Color('Side', scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149'])),
+            ).properties(title="Total Capital Deployed")
+            
+            with chart_col1:
+                st.altair_chart(chart_capital, use_container_width=True)
                 
-                # Display YES results
-                if yes_data:
-                    df_yes = pd.DataFrame(yes_data)
-                    display_results(df_yes, f"YES Holders (Top {len(df_yes)})", "🟢")
-                    
-                    csv_yes = df_yes.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📥 Download YES Holders CSV",
-                        data=csv_yes,
-                        file_name=f"polymarket_yes_holders_{market_slug}.csv",
-                        mime="text/csv",
-                        key=f'dl_yes_{market_slug}'
-                    )
+            # Chart 2: Average All-Time P&L
+            base_pnl = alt.Chart(comparison_df).encode(
+                x=alt.X('Avg_PNL', title='Avg All-Time P&L ($)', axis=alt.Axis(format='$,.0f')),
+                y=alt.Y('Side', title=None),
+                color=alt.Color('Side', scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149'])),
+                tooltip=['Side', alt.Tooltip('Avg_PNL', format='$,.0f')]
+            )
+            chart_pnl = base_pnl.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
+                color=alt.condition(
+                    alt.datum.Avg_PNL < 0,
+                    alt.value('#f85149'),
+                    alt.value('#38b449')
+                )
+            ).properties(title="Average All-Time Trader Profitability")
+
+            with chart_col2:
+                st.altair_chart(chart_pnl, use_container_width=True)
+                        
+            # --- 3. Detailed Comparison Metrics (More Symmetrical) ---
+            st.markdown("### Detailed Side Comparison")
+            
+            comp_col1, comp_col2, comp_col3, comp_col4 = st.columns(4)
+            
+            # Capital Metrics
+            capital_delta = yes_total_value - no_total_value
+            # Note: delta_color 'normal' is green, 'inverse' is red/orange.
+            comp_col1.metric("YES Capital", f"${yes_total_value:,}", 
+                             delta=f"vs NO: ${capital_delta:,.0f}", 
+                             delta_color="normal" if capital_delta > 0 else ("inverse" if capital_delta < 0 else "off"))
+            comp_col2.metric("NO Capital", f"${no_total_value:,}", 
+                             delta=f"vs YES: ${-capital_delta:,.0f}", 
+                             delta_color="normal" if -capital_delta > 0 else ("inverse" if -capital_delta < 0 else "off"))
+            
+            # P&L Metrics
+            pnl_delta = (yes_avg_pnl - no_avg_pnl) if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl) else None
+            
+            if pnl_delta is not None:
+                # Delta for YES: difference (YES - NO). Green if YES is better.
+                yes_pnl_delta_color = "normal" if pnl_delta > 0 else ("inverse" if pnl_delta < 0 else "off")
+                # Delta for NO: difference (NO - YES). Green if NO is better.
+                no_pnl_delta_color = "normal" if (-pnl_delta) > 0 else ("inverse" if (-pnl_delta) < 0 else "off")
+                
+                yes_delta_str = f"vs NO: ${pnl_delta:,.0f}"
+                no_delta_str = f"vs YES: ${-pnl_delta:,.0f}"
+            else:
+                yes_pnl_delta_color = "off"
+                no_pnl_delta_color = "off"
+                yes_delta_str = "vs NO: N/A"
+                no_delta_str = "vs YES: N/A"
+                
+            comp_col3.metric("YES Avg P&L", f"${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "N/A", 
+                             delta=yes_delta_str, 
+                             delta_color=yes_pnl_delta_color)
+            comp_col4.metric("NO Avg P&L", f"${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "N/A", 
+                             delta=no_delta_str, 
+                             delta_color=no_pnl_delta_color)
+
+            # --- 4. Smart Money Verdict ---
+            st.markdown("### 🧠 Smart Money Verdict")
+            
+            if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl):
+                if yes_avg_pnl > no_avg_pnl:
+                    diff = yes_avg_pnl - no_avg_pnl
+                    st.info(f"💡 **Smart Money Indicator:** YES holders are more profitable on average (+${diff:,.0f} vs NO). Their average trader P&L is **{f'${yes_avg_pnl:,.0f}'}**.")
+                elif no_avg_pnl > yes_avg_pnl:
+                    diff = no_avg_pnl - yes_avg_pnl
+                    st.info(f"💡 **Smart Money Indicator:** NO holders are more profitable on average (+${diff:,.0f} vs YES). Their average trader P&L is **{f'${no_avg_pnl:,.0f}'}**.")
                 else:
-                    st.warning("No significant YES holders found for this market.")
-                
-                st.markdown("##")
-                st.markdown("---")
-                st.markdown("##")
-                
-                # Display NO results
-                if no_data:
-                    df_no = pd.DataFrame(no_data)
-                    display_results(df_no, f"NO Holders (Top {len(df_no)})", "🔴")
-                    
-                    csv_no = df_no.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📥 Download NO Holders CSV",
-                        data=csv_no,
-                        file_name=f"polymarket_no_holders_{market_slug}.csv",
-                        mime="text/csv",
-                        key=f'dl_no_{market_slug}'
-                    )
-                else:
-                    st.warning("No significant NO holders found for this market.")
-                
-                # ===== COMPARISON SECTION & VISUALIZATION FIXES =====
-                if yes_data and no_data:
-                    st.markdown("##")
-                    st.markdown("---")
-                    st.header("⚖️ YES vs NO Comparison Dashboard")
-                    
-                    # --- 1. Calculate Summary Metrics ---
-                    yes_avg_pnl = df_yes['All-Time P&L'].mean()
-                    yes_total_value = df_yes['Value'].sum()
-                    yes_total_shares = df_yes['Shares'].sum()
-                    profitable_yes = len(df_yes[df_yes['All-Time P&L'] > 0])
-                    total_yes = len(df_yes[df_yes['All-Time P&L'].notna()])
-                    yes_win_rate = (profitable_yes / total_yes) * 100 if total_yes > 0 else 0
-                    
-                    no_avg_pnl = df_no['All-Time P&L'].mean()
-                    no_total_value = df_no['Value'].sum()
-                    profitable_no = len(df_no[df_no['All-Time P&L'] > 0])
-                    total_no = len(df_no[df_no['All-Time P&L'].notna()])
-                    no_win_rate = (profitable_no / total_no) * 100 if total_no > 0 else 0
-
-                    
-                    # --- 2. Interactive Visualizations (Altair) ---
-                    
-                    comparison_data = {
-                        'Side': ['YES', 'NO'],
-                        # Ensure comparison is robust against NaN/None by converting to 0 for chart display
-                        'Avg_PNL': [yes_avg_pnl if pd.notna(yes_avg_pnl) else 0, no_avg_pnl if pd.notna(no_avg_pnl) else 0],
-                        'Total_Capital': [yes_total_value, no_total_value],
-                        'Win_Rate': [yes_win_rate, no_win_rate]
-                    }
-                    comparison_df = pd.DataFrame(comparison_data)
-
-                    st.markdown("### Capital and Profitability Overview")
-                    chart_col1, chart_col2 = st.columns(2)
-                    
-                    # Chart 1: Total Capital
-                    base_capital = alt.Chart(comparison_df).encode(
-                        x=alt.X('Total_Capital', title='Total Capital ($)', axis=alt.Axis(format='$,.0f')),
-                        y=alt.Y('Side', title=None),
-                        tooltip=['Side', alt.Tooltip('Total_Capital', format='$,.0f')]
-                    )
-                    chart_capital = base_capital.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
-                        color=alt.Color('Side', scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149'])),
-                    ).properties(title="Total Capital Deployed")
-                    
-                    with chart_col1:
-                        st.altair_chart(chart_capital, use_container_width=True)
-                        
-                    # Chart 2: Average All-Time P&L
-                    base_pnl = alt.Chart(comparison_df).encode(
-                        x=alt.X('Avg_PNL', title='Avg All-Time P&L ($)', axis=alt.Axis(format='$,.0f')),
-                        y=alt.Y('Side', title=None),
-                        color=alt.Color('Side', scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149'])),
-                        tooltip=['Side', alt.Tooltip('Avg_PNL', format='$,.0f')]
-                    )
-                    # Use conditional color for P&L to show profitability direction
-                    chart_pnl = base_pnl.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
-                        color=alt.condition(
-                            alt.datum.Avg_PNL < 0,
-                            alt.value('#f85149'),  # Red for negative
-                            alt.value('#38b449')   # Green for positive
-                        )
-                    ).properties(title="Average All-Time Trader Profitability")
-
-                    with chart_col2:
-                        st.altair_chart(chart_pnl, use_container_width=True)
-                        
-                    # --- 3. Detailed Comparison Metrics (More Symmetrical) ---
-                    st.markdown("### Detailed Side Comparison")
-                    
-                    comp_col1, comp_col2, comp_col3, comp_col4 = st.columns(4)
-                    
-                    # Capital Metrics
-                    capital_delta = yes_total_value - no_total_value
-                    comp_col1.metric("YES Capital", f"${yes_total_value:,}", delta=f"vs NO: ${capital_delta:,.0f}", delta_color="normal" if capital_delta > 0 else ("inverse" if capital_delta < 0 else "off"))
-                    comp_col2.metric("NO Capital", f"${no_total_value:,}", delta=f"vs YES: ${-capital_delta:,.0f}", delta_color="normal" if -capital_delta > 0 else ("inverse" if -capital_delta < 0 else "off"))
-                    
-                    # P&L Metrics
-                    pnl_delta = (yes_avg_pnl - no_avg_pnl) if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl) else None
-                    
-                    # Handling P&L delta display: show delta only if both are not NaN
-                    if pnl_delta is not None:
-                        # Delta for YES: difference (YES - NO)
-                        pnl_delta_color = "normal" if pnl_delta > 0 else ("inverse" if pnl_delta < 0 else "off")
-                        
-                        # Delta for NO: opposite difference (NO - YES)
-                        no_pnl_delta_color = "normal" if (-pnl_delta) > 0 else ("inverse" if (-pnl_delta) < 0 else "off")
-                        
-                        yes_delta_str = f"vs NO: ${pnl_delta:,.0f}"
-                        no_delta_str = f"vs YES: ${-pnl_delta:,.0f}"
-                    else:
-                        pnl_delta_color = "off"
-                        no_pnl_delta_color = "off"
-                        yes_delta_str = "vs NO: N/A"
-                        no_delta_str = "vs YES: N/A"
-                        
-                    comp_col3.metric("YES Avg P&L", f"${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "N/A", delta=yes_delta_str, delta_color=pnl_delta_color)
-                    comp_col4.metric("NO Avg P&L", f"${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "N/A", delta=no_delta_str, delta_color=no_pnl_delta_color)
-
-                    # --- 4. Smart Money Verdict ---
-                    st.markdown("### 🧠 Smart Money Verdict")
-                    
-                    if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl):
-                        if yes_avg_pnl > no_avg_pnl:
-                            diff = yes_avg_pnl - no_avg_pnl
-                            st.info(f"💡 **Smart Money Indicator:** YES holders are more profitable on average (+${diff:,.0f} vs NO). Their average trader P&L is **{f'${yes_avg_pnl:,.0f}'}**.")
-                        elif no_avg_pnl > yes_avg_pnl:
-                            diff = no_avg_pnl - yes_avg_pnl
-                            st.info(f"💡 **Smart Money Indicator:** NO holders are more profitable on average (+${diff:,.0f} vs YES). Their average trader P&L is **{f'${no_avg_pnl:,.0f}'}**.")
-                        else:
-                            st.info("💡 **Smart Money Indicator:** Both sides have equally profitable traders on average.")
-                    else:
-                        st.info("💡 **Smart Money Indicator:** Insufficient data to determine a definitive smart money direction.")
-                    
-                    # --- TWITTER SHARE SECTION (Kept) ---
-                    st.markdown("##")
-                    st.markdown("---")
-                    st.header("🐦 Share Your Findings")
-                    
-                    market_title_short = market_data.get('title')[:60] + "..." if len(market_data.get('title')) > 60 else market_data.get('title')
-                    
-                    yes_pnl_str = f"${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "N/A"
-                    no_pnl_str = f"${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "N/A"
-                    
-                    full_url = f"https://polymarket-holders.streamlit.app/"
-                    try:
-                        # Attempt to get a short URL
-                        response = requests.get(f"https://tinyurl.com/api-create.php?url={full_url}", timeout=3)
-                        short_url = response.text if response.status_code == 200 else full_url
-                    except:
-                        short_url = full_url
-                    
-                    tweet_text = f""" 
+                    st.info("💡 **Smart Money Indicator:** Both sides have equally profitable traders on average.")
+            else:
+                st.info("💡 **Smart Money Indicator:** Insufficient data to determine a definitive smart money direction.")
+            
+            # --- TWITTER SHARE SECTION (Kept) ---
+            st.markdown("##")
+            st.markdown("---")
+            st.header("🐦 Share Your Findings")
+            
+            market_title_short = market_data.get('title')[:60] + "..." if len(market_data.get('title')) > 60 else market_data.get('title')
+            
+            yes_pnl_str = f"${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "N/A"
+            no_pnl_str = f"${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "N/A"
+            
+            full_url = f"https://polymarket-holders.streamlit.app/"
+            try:
+                # Attempt to get a short URL
+                response = requests.get(f"https://tinyurl.com/api-create.php?url={full_url}", timeout=3)
+                short_url = response.text if response.status_code == 200 else full_url
+            except:
+                short_url = full_url
+            
+            tweet_text = f""" 
 {market_title_short} @polymarket
-{full_question}
+{selected_question}
 TOP HOLDERS ANALYSIS:
 🟢YES Side:
 ├ Avg P&L: {yes_pnl_str}
@@ -669,13 +653,13 @@ TOP HOLDERS ANALYSIS:
 #Polymarket #WhaleTracker #Crypto
 🔗 {short_url}
 """
-                    
-                    st.markdown("### 📝 Your Tweet Preview")
-                    st.code(tweet_text, language=None)
-                    
-                    twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}"
-                    
-                    st.link_button("🐦 Post to Twitter", twitter_url, use_container_width=True, type="primary")
+            
+            st.markdown("### 📝 Your Tweet Preview")
+            st.code(tweet_text, language=None)
+            
+            twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}"
+            
+            st.link_button("🐦 Post to Twitter", twitter_url, use_container_width=True, type="primary")
 
 st.markdown("---")
 st.caption("A tool for tracking large positions on Polymarket. Data fetched via Polymarket APIs. [GitHub Repository](https://github.com/geomanks/polymarket-holders)")
