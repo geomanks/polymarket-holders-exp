@@ -161,6 +161,38 @@ st.markdown("""
         padding: 1rem;
         border-radius: 8px;
     }
+    
+    /* New: Custom horizontal button group for Market Selection */
+    .market-select-container {
+        display: flex;
+        justify-content: space-between;
+        gap: 10px;
+        padding: 10px 0;
+    }
+    
+    .market-select-button {
+        flex-grow: 1; /* Make buttons expand equally */
+        text-align: center;
+        padding: 10px 15px;
+        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        cursor: pointer;
+        transition: all 0.2s ease;
+        background-color: rgba(255, 255, 255, 0.05);
+        color: #ffffff;
+    }
+    
+    .market-select-button.active {
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+        border-color: #6366f1 !important;
+        font-weight: 600;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.3) !important;
+    }
+    
+    .market-select-button:hover:not(.active) {
+        background-color: rgba(255, 255, 255, 0.08);
+        border-color: rgba(255, 255, 255, 0.2);
+    }
 
 </style>
 """, unsafe_allow_html=True)
@@ -352,7 +384,7 @@ if url:
         st.error("❌ Invalid URL. Please ensure it starts with `https://polymarket.com/event/`")
         st.stop()
     
-    # The problematic line now works because st.session_state['market_data'] is guaranteed to be a dictionary or empty dictionary.
+    # Fetch market data only if not in session state or slug changed
     if st.session_state.get('market_data', {}).get('slug') != slug: 
         try:
             with st.status("🚀 Loading market details...", expanded=True) as status:
@@ -373,22 +405,46 @@ if url:
     
     st.markdown("### 🎯 Select Market to Analyze")
     
-    # --- Interactive Selection Enhancement ---
+    # --- Interactive Selection Enhancement (More Symmetrical) ---
     options = [m.get('question', f'Market {i}') for i, m in enumerate(markets, 1)]
     
-    # Use st.radio for a more interactive selection (better than selectbox for few options)
-    selected_question = st.radio(
-        "Choose a market question:", 
-        options,
-        index=st.session_state['selected_market_index'], # Controlled by state
-        key="market_radio",
-        label_visibility="collapsed",
-        horizontal=True
-    )
+    # Use st.columns and st.button to create a custom horizontal selection widget
+    cols = st.columns(len(options))
     
-    idx = options.index(selected_question)
-    st.session_state['selected_market_index'] = idx
+    for i, question in enumerate(options):
+        # Determine if this button should be active
+        is_active = (i == st.session_state['selected_market_index'])
+        
+        # Determine the button text (shorten if necessary)
+        button_label = question if len(question) < 30 else question[:27] + '...'
+        
+        # Use HTML/CSS to make the button look like a selection tab
+        with cols[i]:
+            # Use st.button with a unique key and custom CSS class
+            button_clicked = st.button(
+                label=button_label,
+                key=f"market_btn_{i}",
+                use_container_width=True
+            )
+            
+            # Use st.markdown to inject the CSS class if selected (Trick for custom button groups)
+            if is_active:
+                st.markdown(f"""
+                <script>
+                    const button = document.querySelector('[data-testid="stButton"] button[key="market_btn_{i}"]');
+                    if(button) {{
+                        button.classList.add('active');
+                    }}
+                </script>
+                """, unsafe_allow_html=True)
+
+            if button_clicked:
+                st.session_state['selected_market_index'] = i
+                st.rerun() # Rerun to update the selection immediately
+    
+    idx = st.session_state['selected_market_index']
     selected = markets[idx]
+    selected_question = options[idx] # Use the full question for display below
     
     st.markdown("---")
 
@@ -469,7 +525,7 @@ if url:
             status_box.update(label="✅ Analysis Complete!", state="complete", expanded=False)
 
 
-    # --- Display Results Section (Moved outside the button block to persist display) ---
+    # --- Display Results Section ---
     
     if st.session_state.get('analysis_yes_data') or st.session_state.get('analysis_no_data'):
         
@@ -514,20 +570,21 @@ if url:
         else:
             st.warning("No significant NO holders found.")
         
-        # ===== COMPARISON SECTION & VISUALIZATION =====
+        # ===== COMPARISON SECTION & VISUALIZATION FIXES =====
         if yes_data and no_data:
             st.markdown("##")
             st.markdown("---")
             st.header("⚖️ YES vs NO Comparison Dashboard")
             
-            # Calculate Summary Metrics
+            # --- 1. Calculate Summary Metrics ---
+            # Using .sum() and .mean() on DataFrames is robust against NaNs
             yes_avg_pnl = df_yes['All-Time P&L'].mean()
             yes_total_value = df_yes['Value'].sum()
             yes_total_shares = df_yes['Shares'].sum()
             yes_avg_entry = (df_yes['Shares'] * df_yes['Entry']).sum() / yes_total_shares if yes_total_shares > 0 else 0
             profitable_yes = len(df_yes[df_yes['All-Time P&L'] > 0])
             total_yes = len(df_yes[df_yes['All-Time P&L'].notna()])
-            yes_win_rate = (profitable_yes / total_yes) * 100 if total_yes > 0 else np.nan
+            yes_win_rate = (profitable_yes / total_yes) * 100 if total_yes > 0 else 0
             
             no_avg_pnl = df_no['All-Time P&L'].mean()
             no_total_value = df_no['Value'].sum()
@@ -535,17 +592,20 @@ if url:
             no_avg_entry = (df_no['Shares'] * df_no['Entry']).sum() / no_total_shares if no_total_shares > 0 else 0
             profitable_no = len(df_no[df_no['All-Time P&L'] > 0])
             total_no = len(df_no[df_no['All-Time P&L'].notna()])
-            no_win_rate = (profitable_no / total_no) * 100 if total_no > 0 else np.nan
+            no_win_rate = (profitable_no / total_no) * 100 if total_no > 0 else 0
 
             
-            # --- Interactive Visualizations (Altair) ---
+            # --- 2. Interactive Visualizations (Altair) ---
             
-            comparison_df = pd.DataFrame({
+            # Create a dataframe for charting, converting NaNs to 0 for charts if needed, 
+            # but using robust checks for display.
+            comparison_data = {
                 'Side': ['YES', 'NO'],
-                'Avg_PNL': [yes_avg_pnl, no_avg_pnl],
+                'Avg_PNL': [yes_avg_pnl if pd.notna(yes_avg_pnl) else 0, no_avg_pnl if pd.notna(no_avg_pnl) else 0],
                 'Total_Capital': [yes_total_value, no_total_value],
                 'Win_Rate': [yes_win_rate, no_win_rate]
-            }).fillna(0) # Fill NaN for chart compatibility
+            }
+            comparison_df = pd.DataFrame(comparison_data)
 
             st.markdown("### Capital and Profitability Overview")
             chart_col1, chart_col2 = st.columns(2)
@@ -581,8 +641,25 @@ if url:
 
             with chart_col2:
                 st.altair_chart(chart_pnl, use_container_width=True)
+                
+            # --- 3. Detailed Comparison Metrics (More Symmetrical) ---
+            st.markdown("### Detailed Side Comparison")
+            
+            comp_col1, comp_col2, comp_col3, comp_col4 = st.columns(4)
+            
+            # Capital Metrics
+            comp_col1.metric("YES Capital", f"${yes_total_value:,}", delta=f"vs NO: ${yes_total_value - no_total_value:,.0f}")
+            comp_col2.metric("NO Capital", f"${no_total_value:,}", delta=f"vs YES: ${no_total_value - yes_total_value:,.0f}")
+            
+            # P&L Metrics
+            pnl_delta = (yes_avg_pnl - no_avg_pnl) if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl) else 0
+            pnl_delta_color = "inverse" if pnl_delta < 0 else "normal"
+            
+            comp_col3.metric("YES Avg P&L", f"${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "N/A", delta=f"vs NO: ${pnl_delta:,.0f}", delta_color=pnl_delta_color)
+            comp_col4.metric("NO Avg P&L", f"${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "N/A", delta=f"vs YES: ${-pnl_delta:,.0f}", delta_color="normal" if pnl_delta_color == "inverse" else "inverse")
+            
 
-            # --- Verdict ---
+            # --- 4. Smart Money Verdict ---
             st.markdown("### 🧠 Smart Money Verdict")
             
             if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl):
