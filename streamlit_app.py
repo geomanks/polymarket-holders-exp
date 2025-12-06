@@ -529,11 +529,18 @@ if url:
             
             comparison_data = {
                 'Side': ['YES', 'NO'],
-                'Avg_PNL': [yes_avg_pnl if pd.notna(yes_avg_pnl) else 0, no_avg_pnl if pd.notna(no_avg_pnl) else 0],
+                # Keep this logic as it converts potential NaN means to 0, which Altair accepts.
+                'Avg_PNL': [yes_avg_pnl if pd.notna(yes_avg_pnl) else 0.0, no_avg_pnl if pd.notna(no_avg_pnl) else 0.0],
                 'Total_Capital': [yes_total_value, no_total_value],
                 'Win_Rate': [yes_win_rate, no_win_rate]
             }
             comparison_df = pd.DataFrame(comparison_data)
+            
+            # **CRITICAL FIX:** Ensure all numerical columns are standard float type 
+            # and fill any remaining NaNs (though our logic above should prevent it)
+            comparison_df['Total_Capital'] = comparison_df['Total_Capital'].astype(float)
+            comparison_df['Avg_PNL'] = comparison_df['Avg_PNL'].astype(float)
+
 
             st.markdown("### Capital and Profitability Overview")
             chart_col1, chart_col2 = st.columns(2)
