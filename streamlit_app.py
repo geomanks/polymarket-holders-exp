@@ -13,7 +13,7 @@ import urllib.parse
 # ===== PAGE SETUP =====
 # Use a dark theme for a sleek, modern look, and a wider layout.
 st.set_page_config(
-    page_title="Polymarket Whale Tracker 🐋", 
+    page_title="Polymarket Top Holders Tracker", 
     page_icon="💰", 
     layout="wide", 
     initial_sidebar_state="collapsed"
@@ -22,90 +22,235 @@ st.set_page_config(
 # ===== ENHANCED STYLING (Dark Theme & Typography) =====
 st.markdown("""
 <style>
-    /* Global Background and Typography */
+    /* Import Professional Font */
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+    
+    /* Global Styling */
     .main { 
-        background-color: #0d1117; /* Dark GitHub-like background */
-        color: #c9d1d9; /* Light grey text */
-        font-family: 'Inter', sans-serif;
+        background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+        color: #e4e7eb;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Headers */
-    h1, h2, h3 { 
-        color: #58a6ff !important; /* Polymarket Blue */
-        font-weight: 600;
-        letter-spacing: -0.5px;
+    /* Remove Streamlit Branding */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
+    /* Typography Hierarchy */
+    h1 { 
+        color: #ffffff !important;
+        font-weight: 700 !important;
+        font-size: 2.5rem !important;
+        letter-spacing: -1px !important;
+        margin-bottom: 0.5rem !important;
     }
-    h1 {
-        border-bottom: 2px solid #21262d; /* Subtle divider for the title */
-        padding-bottom: 10px;
+    
+    h2 { 
+        color: #f0f2f5 !important;
+        font-weight: 600 !important;
+        font-size: 1.75rem !important;
+        letter-spacing: -0.5px !important;
+        margin-top: 2rem !important;
     }
-
-    /* Streamlit Components */
-    .stTextInput > label, .stSelectbox > label {
-        font-size: 1.1rem;
-        font-weight: 500;
-        color: #c9d1d9;
+    
+    h3 { 
+        color: #d1d5db !important;
+        font-weight: 600 !important;
+        font-size: 1.25rem !important;
+        margin-top: 1.5rem !important;
     }
+    
+    /* Input Fields */
+    .stTextInput > div > div > input,
+    .stSelectbox > div > div > select {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+        color: #ffffff !important;
+        font-size: 0.95rem !important;
+        padding: 0.75rem !important;
+        transition: all 0.2s ease !important;
+    }
+    
+    .stTextInput > div > div > input:focus,
+    .stSelectbox > div > div > select:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
+    }
+    
+    .stTextInput label, .stSelectbox label {
+        color: #d1d5db !important;
+        font-weight: 500 !important;
+        font-size: 0.9rem !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
+    }
+    
+    /* Primary Button */
     .stButton > button {
-        background-color: #238636; /* Success green for main action */
-        color: white;
-        font-weight: bold;
-        border-radius: 8px;
-        border: none;
-        padding: 10px 20px;
-        transition: all 0.2s;
+        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%) !important;
+        color: white !important;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        border-radius: 8px !important;
+        border: none !important;
+        padding: 0.75rem 2rem !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3) !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
+    
     .stButton > button:hover {
-        background-color: #2ea043;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4) !important;
     }
     
-    /* Info/Success/Error Blocks */
-    .stAlert { 
-        font-size: 1.1rem; 
-        border-radius: 8px;
-    }
-    .stAlert.info { 
-        background-color: #1a1f28; 
-        border-left: 5px solid #58a6ff;
-        color: #c9d1d9;
-    }
-    .stAlert.success {
-        background-color: #1a1f28; 
-        border-left: 5px solid #238636;
-        color: #c9d1d9;
-    }
-
-    /* Divider */
-    .st-dg { /* Target the Streamlit divider */
-        background-color: #21262d;
+    /* Download Button */
+    .stDownloadButton > button {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #d1d5db !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        font-weight: 500 !important;
+        border-radius: 6px !important;
+        padding: 0.5rem 1rem !important;
+        transition: all 0.2s ease !important;
     }
     
-    /* Metrics Highlighting */
+    .stDownloadButton > button:hover {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        border-color: rgba(255, 255, 255, 0.2) !important;
+    }
+    
+    /* Alert Boxes */
+    .stAlert {
+        background: rgba(255, 255, 255, 0.03) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 8px !important;
+        padding: 1rem !important;
+        color: #e4e7eb !important;
+    }
+    
+    div[data-baseweb="notification"] > div {
+        background: rgba(99, 102, 241, 0.1) !important;
+        border-left: 4px solid #6366f1 !important;
+    }
+    
+    /* Metrics */
     [data-testid="stMetricValue"] {
-        font-size: 1.8rem;
-        color: #58a6ff; /* Blue for the value */
+        font-size: 2rem !important;
+        font-weight: 700 !important;
+        color: #ffffff !important;
     }
+    
     [data-testid="stMetricLabel"] {
-        font-size: 0.9rem;
-        color: #8b949e; /* Light grey for the label */
+        color: #9ca3af !important;
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        text-transform: uppercase !important;
+        letter-spacing: 0.5px !important;
     }
-
-    /* DataFrame Styling - to blend with dark theme */
+    
+    /* DataFrames */
     .stDataFrame {
-        border: 1px solid #21262d;
-        border-radius: 8px;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 8px !important;
+        overflow: hidden !important;
     }
-
-    /* P&L Color Coding */
-    .positive { color: #38b449; font-weight: bold; } /* Green for positive */
-    .negative { color: #f85149; font-weight: bold; } /* Red for negative */
-    .neutral { color: #c9d1d9; } /* Default */
+    
+    .stDataFrame [data-testid="stDataFrameResizable"] {
+        background: rgba(255, 255, 255, 0.02) !important;
+    }
+    
+    /* Table Headers */
+    .stDataFrame thead tr th {
+        background: rgba(99, 102, 241, 0.15) !important;
+        color: #ffffff !important;
+        font-weight: 600 !important;
+        text-transform: uppercase !important;
+        font-size: 0.75rem !important;
+        letter-spacing: 0.5px !important;
+        padding: 1rem !important;
+        border-bottom: 2px solid rgba(99, 102, 241, 0.3) !important;
+    }
+    
+    /* Table Rows */
+    .stDataFrame tbody tr {
+        border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
+    }
+    
+    .stDataFrame tbody tr:hover {
+        background: rgba(255, 255, 255, 0.03) !important;
+    }
+    
+    .stDataFrame tbody tr td {
+        padding: 0.75rem 1rem !important;
+        color: #e4e7eb !important;
+    }
+    
+    /* Progress Bar */
+    .stProgress > div > div > div {
+        background: linear-gradient(90deg, #6366f1 0%, #8b5cf6 100%) !important;
+    }
+    
+    /* Divider */
+    hr {
+        border-color: rgba(255, 255, 255, 0.1) !important;
+        margin: 2rem 0 !important;
+    }
+    
+    /* P&L Styling */
+    .positive { 
+        color: #10b981 !important; 
+        font-weight: 600 !important; 
+    }
+    
+    .negative { 
+        color: #ef4444 !important; 
+        font-weight: 600 !important; 
+    }
+    
+    .neutral { 
+        color: #9ca3af !important; 
+    }
+    
+    /* Link Button (Twitter) */
+    .stLinkButton > a {
+        background: linear-gradient(135deg, #1da1f2 0%, #0c8bd9 100%) !important;
+        color: white !important;
+        font-weight: 600 !important;
+        border-radius: 8px !important;
+        padding: 0.75rem 2rem !important;
+        text-decoration: none !important;
+        display: inline-block !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 4px 12px rgba(29, 161, 242, 0.3) !important;
+    }
+    
+    .stLinkButton > a:hover {
+        transform: translateY(-2px) !important;
+        box-shadow: 0 6px 20px rgba(29, 161, 242, 0.4) !important;
+    }
+    
+    /* Code blocks (for tweet preview) */
+    .stCodeBlock {
+        background: rgba(0, 0, 0, 0.3) !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Caption/Footer */
+    .stCaption {
+        color: #6b7280 !important;
+        font-size: 0.85rem !important;
+    }
 
 </style>
 """, unsafe_allow_html=True)
 
-st.title("💰 Polymarket Whale Tracker")
-st.write("### **See who's winning and who's losing in any market**")
+st.title("📊 Polymarket Holdings Analysis")
+st.write("Track and analyze the top traders in any Polymarket prediction market. Identify smart money patterns and profitable positions.")
 st.divider()
 
 # ===== CORE FUNCTIONS (No Change needed here for visuals) =====
@@ -524,7 +669,7 @@ if url:
             no_winners_str = f"{profitable_no}/{total_no} ({(profitable_no/total_no*100):.0f}%)" if total_no > 0 else "N/A"
             
             # Shorten the URL
-            full_url = f"https://polymarket-holders-exp.streamlit.app/"
+            full_url = f"https://polymarket-holders.streamlit.app/"
             try:
                 response = requests.get(f"https://tinyurl.com/api-create.php?url={full_url}", timeout=3)
                 short_url = response.text if response.status_code == 200 else full_url
@@ -532,8 +677,8 @@ if url:
                 short_url = full_url
             
             # Create the tweet text
-            tweet_text = f"""@polymarket 
-{market_title_short}
+            tweet_text = f""" 
+{market_title_short} @polymarket
 {selected.get('question', '')}
 TOP 15 HOLDERS
 🟢YES Side:
