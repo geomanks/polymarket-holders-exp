@@ -409,12 +409,10 @@ def display_results(df: pd.DataFrame, title: str, color_code: str):
 if 'current_url' not in st.session_state:
     st.session_state['current_url'] = ""
 
-st.markdown("### 🔗 Enter Market URL")
 url = st.text_input(
-    "Polymarket Market URL:", 
+    "🔗 Polymarket Event URL:", 
     value=st.session_state['current_url'],
-    placeholder="https://polymarket.com/event/...",
-    label_visibility="collapsed"
+    placeholder="https://polymarket.com/event/..."
 )
 
 # Update session state when URL changes
@@ -438,7 +436,6 @@ if url:
         st.error(f"Failed to fetch market data: {e}")
         st.stop()
         
-    st.markdown("##")
     st.success(f"✅ **{market_data.get('title')}**")
     
     markets = [m for m in market_data.get('markets', []) if m.get('enableOrderBook')]
@@ -446,24 +443,19 @@ if url:
         st.error("No yes/no markets found in this event.")
         st.stop()
     
-    # Market selection with better styling
-    st.markdown("##")
+    # Compact market selection
     if len(markets) > 1:
-        st.markdown("### 📊 Market Selection")
-        st.info(f"This event has **{len(markets)}** sub-markets. Select one to analyze:")
+        st.markdown("##")
         options = [m.get('question', f'Market {i}') for i, m in enumerate(markets, 1)]
         selected_question = st.selectbox(
-            "Choose market:", 
+            "📊 Select Market to Analyze:", 
             options,
-            key="market_select",
-            label_visibility="collapsed"
+            key="market_select"
         )
         idx = options.index(selected_question)
         selected = markets[idx]
     else:
         selected = markets[0]
-        st.markdown("### 📊 Market Question")
-        st.info(f"**{selected.get('question')}**")
     
     st.markdown("##")
     
