@@ -523,6 +523,14 @@ if url:
             yes_winners_str = f"{profitable_yes}/{total_yes} ({(profitable_yes/total_yes*100):.0f}%)" if total_yes > 0 else "N/A"
             no_winners_str = f"{profitable_no}/{total_no} ({(profitable_no/total_no*100):.0f}%)" if total_no > 0 else "N/A"
             
+            # Shorten the URL
+            full_url = f"https://polymarket.com/event/{slug}"
+            try:
+                response = requests.get(f"https://tinyurl.com/api-create.php?url={full_url}", timeout=3)
+                short_url = response.text if response.status_code == 200 else full_url
+            except:
+                short_url = full_url
+            
             # Create the tweet text
             tweet_text = f"""
 {market_title_short}
@@ -536,7 +544,7 @@ if url:
 ├ Avg P&L: {no_pnl_str}
 ├ Capital: ${no_total_value:,}
 └ Winners: {no_winners_str}
-🔗 https://polymarket.com/event/{slug}
+🔗 {short_url}
 """
             
             # Display the tweet preview
