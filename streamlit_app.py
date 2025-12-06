@@ -524,8 +524,9 @@ if url:
             no_winners_str = f"{profitable_no}/{total_no} ({(profitable_no/total_no*100):.0f}%)" if total_no > 0 else "N/A"
             
             # Create the tweet text with nice formatting
-            tweet_text = f"""🐋 Polymarket Whale Analysis
+tweet_text = f"""
 {market_title_short}
+{selected.get('question', '')}
 
 📊 TOP 15 HOLDERS COMPARISON
 
@@ -539,11 +540,11 @@ if url:
 ├ Capital: ${no_total_value:,}
 └ Winners: {no_winners_str}
 
-{winner_emoji} Smart Money: {verdict}
+
 
 🔗 https://polymarket.com/event/{slug}
 
-#Polymarket #PredictionMarkets"""
+"""
             
             # Display the tweet preview
             st.markdown("### 📝 Your Tweet (Ready to Post!)")
