@@ -536,7 +536,7 @@ if url:
 ├ Avg P&L: {no_pnl_str}
 ├ Capital: ${no_total_value:,}
 └ Winners: {no_winners_str}
-🔗 Link: polymarket.com/event/{slug}
+🔗 https://polymarket.com/event/{slug}
 """
             
             # Display the tweet preview
