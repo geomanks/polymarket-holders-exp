@@ -169,7 +169,7 @@ st.title("💰 Polymarket Whale Tracker")
 st.write("Track and analyze the top traders in any Polymarket prediction market. Identify smart money patterns and profitable positions.")
 st.divider()
 
-# ===== CORE FUNCTIONS (API functions - no change needed for styling) =====
+# ===== CORE FUNCTIONS (API functions) =====
 
 def extract_slug(url: str) -> Optional[str]:
     match = re.search(r'polymarket\.com/event/([^?#/]+)', url)
@@ -180,7 +180,6 @@ def fetch_market_data(slug: str):
     # Use st.cache_data for this as it's static per slug
     return requests.get(url).json()[0]
 
-# --- Other fetch/scrape functions remain the same ---
 def fetch_holders(condition_id: str):
     url = f"https://data-api.polymarket.com/holders?market={condition_id}&limit=20&sort=shares&order=desc"
     return requests.get(url).json()
@@ -319,8 +318,9 @@ def display_results(df: pd.DataFrame, title: str, color_code: str):
 # Initialize session state for URL and market selection
 if 'current_url' not in st.session_state:
     st.session_state['current_url'] = ""
+# FIX: Initialize 'market_data' to an empty dictionary instead of None.
 if 'market_data' not in st.session_state:
-    st.session_state['market_data'] = None
+    st.session_state['market_data'] = {}
 if 'selected_market_index' not in st.session_state:
     st.session_state['selected_market_index'] = 0
 
@@ -335,7 +335,8 @@ def clear_analysis_data():
     for key in ['analysis_yes_data', 'analysis_no_data', 'analysis_slug', 'analysis_market_title']:
         if key in st.session_state:
             del st.session_state[key]
-    st.session_state['market_data'] = None
+    # FIX: Reset 'market_data' to an empty dictionary instead of None.
+    st.session_state['market_data'] = {} 
     st.session_state['selected_market_index'] = 0 # Reset selection index
 
 # Update session state when URL changes
@@ -351,8 +352,8 @@ if url:
         st.error("❌ Invalid URL. Please ensure it starts with `https://polymarket.com/event/`")
         st.stop()
     
-    # Fetch market data only if not in session state or slug changed
-    if st.session_state.get('market_data', {}).get('slug') != slug:
+    # The problematic line now works because st.session_state['market_data'] is guaranteed to be a dictionary or empty dictionary.
+    if st.session_state.get('market_data', {}).get('slug') != slug: 
         try:
             with st.status("🚀 Loading market details...", expanded=True) as status:
                 market_data = fetch_market_data(slug)
