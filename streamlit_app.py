@@ -621,14 +621,23 @@ if url:
             
             # Generate image button
             if st.button("📸 Generate Share Image", type="primary", key="generate_img"):
+                st.write("🔍 DEBUG: Button clicked!")
                 try:
+                    st.write("🔍 DEBUG: Entering try block...")
+                    st.write(f"🔍 DEBUG: df_yes shape: {df_yes.shape}")
+                    st.write(f"🔍 DEBUG: df_no shape: {df_no.shape}")
+                    st.write(f"🔍 DEBUG: Market title: {market_data.get('title')}")
+                    
                     with st.spinner("🎨 Creating summary image..."):
+                        st.write("🔍 DEBUG: About to call generate_summary_image...")
                         img_buffer = generate_summary_image(market_data.get('title'), df_yes, df_no)
+                        st.write("🔍 DEBUG: Image generated successfully!")
                         
                         # Store in session state
                         st.session_state['share_image'] = img_buffer.getvalue()
                         st.session_state['share_slug'] = slug
                         st.session_state['share_title'] = market_data.get('title')
+                        st.write("🔍 DEBUG: Stored in session state!")
                         
                         # Display immediately after generation
                         st.success("✅ Image generated successfully!")
@@ -667,6 +676,7 @@ if url:
                         
                 except Exception as e:
                     st.error(f"❌ Error generating image: {str(e)}")
+                    st.write(f"🔍 DEBUG: Error type: {type(e).__name__}")
                     import traceback
                     st.code(traceback.format_exc())
             
