@@ -396,10 +396,23 @@ def generate_summary_image(market_title: str, df_yes: pd.DataFrame, df_no: pd.Da
         plt.close(fig)
         return buf
 
-
 # ===== MAIN APP (Updated to use new styling and functions) =====
 
-url = st.text_input("**🔗 Paste Polymarket Market URL:**", placeholder="e.g., https://polymarket.com/event/will-tory-retain-power...")
+# Initialize session state for URL
+if 'current_url' not in st.session_state:
+    st.session_state['current_url'] = ""
+
+url = st.text_input("**🔗 Paste Polymarket Market URL:**", 
+                    value=st.session_state['current_url'],
+                    placeholder="e.g., https://polymarket.com/event/will-tory-retain-power...")
+
+# Update session state when URL changes
+if url != st.session_state['current_url']:
+    st.session_state['current_url'] = url
+    # Clear old analysis data when URL changes
+    for key in ['analysis_yes_data', 'analysis_no_data', 'analysis_slug', 'analysis_market_title', 'share_image']:
+        if key in st.session_state:
+            del st.session_state[key]
 
 if url:
     slug = extract_slug(url)
