@@ -516,6 +516,7 @@ if url:
             
             no_avg_pnl = df_no['All-Time P&L'].mean()
             no_total_value = df_no['Value'].sum()
+            no_total_shares = df_no['Shares'].sum()
             profitable_no = len(df_no[df_no['All-Time P&L'] > 0])
             total_no = len(df_no[df_no['All-Time P&L'].notna()])
             no_win_rate = (profitable_no / total_no) * 100 if total_no > 0 else 0
@@ -580,44 +581,29 @@ if url:
             with chart_col2:
                 st.altair_chart(chart_pnl, use_container_width=True)
                         
-            # --- 3. Detailed Comparison Metrics (More Symmetrical) ---
+            # --- 3. Detailed Comparison Metrics (Revised for Readability) ---
             st.markdown("### Detailed Side Comparison")
             
-            comp_col1, comp_col2, comp_col3, comp_col4 = st.columns(4)
+            # Use two columns for better side-by-side comparison
+            comp_col_yes, comp_col_no = st.columns(2)
             
-            # Capital Metrics
-            capital_delta = yes_total_value - no_total_value
-            # Note: delta_color 'normal' is green, 'inverse' is red/orange.
-            comp_col1.metric("YES Capital", f"${yes_total_value:,}", 
-                             delta=f"vs NO: ${capital_delta:,.0f}", 
-                             delta_color="normal" if capital_delta > 0 else ("inverse" if capital_delta < 0 else "off"))
-            comp_col2.metric("NO Capital", f"${no_total_value:,}", 
-                             delta=f"vs YES: ${-capital_delta:,.0f}", 
-                             delta_color="normal" if -capital_delta > 0 else ("inverse" if -capital_delta < 0 else "off"))
+            # Calculate win rates with .1f precision for display
+            yes_win_rate_str = f"{yes_win_rate:.1f}%" if total_yes > 0 else "N/A"
+            no_win_rate_str = f"{no_win_rate:.1f}%" if total_no > 0 else "N/A"
             
-            # P&L Metrics
-            pnl_delta = (yes_avg_pnl - no_avg_pnl) if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl) else None
-            
-            if pnl_delta is not None:
-                # Delta for YES: difference (YES - NO). Green if YES is better.
-                yes_pnl_delta_color = "normal" if pnl_delta > 0 else ("inverse" if pnl_delta < 0 else "off")
-                # Delta for NO: difference (NO - YES). Green if NO is better.
-                no_pnl_delta_color = "normal" if (-pnl_delta) > 0 else ("inverse" if (-pnl_delta) < 0 else "off")
+            with comp_col_yes:
+                st.markdown("#### 🟢 YES Position Summary")
+                st.metric("Total Capital Deployed", f"${yes_total_value:,}")
+                st.metric("Average Trader P&L", f"${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "N/A")
+                st.metric("Total Shares Held", f"{yes_total_shares:,}")
+                st.metric("Profitable Traders (Win Rate)", f"{profitable_yes}/{total_yes} ({yes_win_rate_str})" if total_yes > 0 else "N/A")
                 
-                yes_delta_str = f"vs NO: ${pnl_delta:,.0f}"
-                no_delta_str = f"vs YES: ${-pnl_delta:,.0f}"
-            else:
-                yes_pnl_delta_color = "off"
-                no_pnl_delta_color = "off"
-                yes_delta_str = "vs NO: N/A"
-                no_delta_str = "vs YES: N/A"
-                
-            comp_col3.metric("YES Avg P&L", f"${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "N/A", 
-                             delta=yes_delta_str, 
-                             delta_color=yes_pnl_delta_color)
-            comp_col4.metric("NO Avg P&L", f"${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "N/A", 
-                             delta=no_delta_str, 
-                             delta_color=no_pnl_delta_color)
+            with comp_col_no:
+                st.markdown("#### 🔴 NO Position Summary")
+                st.metric("Total Capital Deployed", f"${no_total_value:,}")
+                st.metric("Average Trader P&L", f"${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "N/A")
+                st.metric("Total Shares Held", f"{no_total_shares:,}")
+                st.metric("Profitable Traders (Win Rate)", f"{profitable_no}/{total_no} ({no_win_rate_str})" if total_no > 0 else "N/A")
 
             # --- 4. Smart Money Verdict ---
             st.markdown("### 🧠 Smart Money Verdict")
@@ -634,7 +620,7 @@ if url:
             else:
                 st.info("💡 **Smart Money Indicator:** Insufficient data to determine a definitive smart money direction.")
             
-            # --- TWITTER SHARE SECTION (Kept) ---
+            # --- TWITTER SHARE SECTION (Retained) ---
             st.markdown("##")
             st.markdown("---")
             st.header("🐦 Share Your Findings")
