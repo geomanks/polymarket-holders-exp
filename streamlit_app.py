@@ -550,6 +550,12 @@ if url:
         st.balloons()
         st.success("✅ Analysis Complete!")
         
+        # Store data in session state for Twitter share functionality
+        st.session_state['analysis_yes_data'] = yes_data
+        st.session_state['analysis_no_data'] = no_data
+        st.session_state['analysis_slug'] = slug
+        st.session_state['analysis_market_title'] = market_data.get('title')
+        
         # ===== COMPARISON SECTION =====
         if yes_data and no_data:
             st.markdown("##")
@@ -619,25 +625,22 @@ if url:
             st.markdown("**Share your analysis on Twitter!**")
             st.markdown("Click below to generate a summary image and share it with your followers.")
             
-            # Generate image button
+            # Generate image button - use session state data
             if st.button("📸 Generate Share Image", type="primary", key="generate_img"):
-                st.write("🔍 DEBUG: Button clicked!")
                 try:
-                    st.write("🔍 DEBUG: Entering try block...")
-                    st.write(f"🔍 DEBUG: df_yes shape: {df_yes.shape}")
-                    st.write(f"🔍 DEBUG: df_no shape: {df_no.shape}")
-                    st.write(f"🔍 DEBUG: Market title: {market_data.get('title')}")
+                    # Get data from session state
+                    df_yes_for_img = pd.DataFrame(st.session_state.get('analysis_yes_data', yes_data))
+                    df_no_for_img = pd.DataFrame(st.session_state.get('analysis_no_data', no_data))
+                    market_title = st.session_state.get('analysis_market_title', market_data.get('title'))
+                    slug_for_img = st.session_state.get('analysis_slug', slug)
                     
                     with st.spinner("🎨 Creating summary image..."):
-                        st.write("🔍 DEBUG: About to call generate_summary_image...")
-                        img_buffer = generate_summary_image(market_data.get('title'), df_yes, df_no)
-                        st.write("🔍 DEBUG: Image generated successfully!")
+                        img_buffer = generate_summary_image(market_title, df_yes_for_img, df_no_for_img)
                         
                         # Store in session state
                         st.session_state['share_image'] = img_buffer.getvalue()
-                        st.session_state['share_slug'] = slug
-                        st.session_state['share_title'] = market_data.get('title')
-                        st.write("🔍 DEBUG: Stored in session state!")
+                        st.session_state['share_slug'] = slug_for_img
+                        st.session_state['share_title'] = market_title
                         
                         # Display immediately after generation
                         st.success("✅ Image generated successfully!")
@@ -676,7 +679,6 @@ if url:
                         
                 except Exception as e:
                     st.error(f"❌ Error generating image: {str(e)}")
-                    st.write(f"🔍 DEBUG: Error type: {type(e).__name__}")
                     import traceback
                     st.code(traceback.format_exc())
             
