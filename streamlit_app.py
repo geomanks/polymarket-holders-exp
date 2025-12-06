@@ -263,124 +263,138 @@ def display_results(df: pd.DataFrame, title: str, color_code: str):
 def generate_summary_image(market_title: str, df_yes: pd.DataFrame, df_no: pd.DataFrame) -> BytesIO:
     """Generate a summary image for Twitter sharing."""
     
-    # Set up the figure with dark theme
-    plt.style.use('dark_background')
-    fig, ax = plt.subplots(figsize=(12, 10), facecolor='#0d1117')
-    ax.set_facecolor('#0d1117')
-    ax.axis('off')
-    
-    # Title
-    title_text = f"Polymarket Whale Tracker\n{market_title}"
-    ax.text(0.5, 0.95, title_text, fontsize=18, fontweight='bold', 
-            ha='center', va='top', color='#58a6ff', wrap=True)
-    
-    # Calculate metrics
-    yes_avg_pnl = df_yes['All-Time P&L'].mean()
-    no_avg_pnl = df_no['All-Time P&L'].mean()
-    yes_total_value = df_yes['Value'].sum()
-    no_total_value = df_no['Value'].sum()
-    
-    # YES side (left)
-    yes_start_y = 0.82
-    ax.text(0.05, yes_start_y, "🟢 YES HOLDERS (Top 3)", fontsize=14, 
-            fontweight='bold', color='#38b449', va='top')
-    
-    # Top 3 YES holders
-    for i, (idx, row) in enumerate(df_yes.head(3).iterrows()):
-        y_pos = yes_start_y - 0.08 - (i * 0.08)
-        name = row['Name']
-        pnl = row['All-Time P&L']
-        pnl_str = f"${pnl:,.0f}" if pd.notna(pnl) else "N/A"
-        color = '#38b449' if pd.notna(pnl) and pnl > 0 else '#f85149' if pd.notna(pnl) and pnl < 0 else '#8b949e'
+    try:
+        # Set up the figure with dark theme
+        fig, ax = plt.subplots(figsize=(12, 10), facecolor='#0d1117')
+        ax.set_facecolor('#0d1117')
+        ax.axis('off')
         
-        ax.text(0.05, y_pos, f"{i+1}. {name}", fontsize=11, color='#c9d1d9', va='top')
-        ax.text(0.35, y_pos, f"P&L: {pnl_str}", fontsize=11, color=color, va='top', fontweight='bold')
-    
-    # YES metrics
-    metrics_y = yes_start_y - 0.35
-    ax.text(0.05, metrics_y, "📊 YES METRICS", fontsize=12, fontweight='bold', 
-            color='#c9d1d9', va='top')
-    ax.text(0.05, metrics_y - 0.05, f"Avg All-Time P&L: ${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "Avg All-Time P&L: N/A", 
-            fontsize=10, color='#c9d1d9', va='top')
-    ax.text(0.05, metrics_y - 0.09, f"Total Capital: ${yes_total_value:,}", 
-            fontsize=10, color='#c9d1d9', va='top')
-    
-    profitable_yes = len(df_yes[df_yes['All-Time P&L'] > 0])
-    total_yes = len(df_yes[df_yes['All-Time P&L'].notna()])
-    if total_yes > 0:
-        win_rate = (profitable_yes / total_yes) * 100
-        ax.text(0.05, metrics_y - 0.13, f"Profitable: {profitable_yes}/{total_yes} ({win_rate:.0f}%)", 
-                fontsize=10, color='#c9d1d9', va='top')
-    
-    # NO side (right)
-    no_start_y = 0.82
-    ax.text(0.55, no_start_y, "🔴 NO HOLDERS (Top 3)", fontsize=14, 
-            fontweight='bold', color='#f85149', va='top')
-    
-    # Top 3 NO holders
-    for i, (idx, row) in enumerate(df_no.head(3).iterrows()):
-        y_pos = no_start_y - 0.08 - (i * 0.08)
-        name = row['Name']
-        pnl = row['All-Time P&L']
-        pnl_str = f"${pnl:,.0f}" if pd.notna(pnl) else "N/A"
-        color = '#38b449' if pd.notna(pnl) and pnl > 0 else '#f85149' if pd.notna(pnl) and pnl < 0 else '#8b949e'
+        # Title
+        title_text = f"Polymarket Whale Tracker\n{market_title[:100]}"
+        ax.text(0.5, 0.95, title_text, fontsize=16, fontweight='bold', 
+                ha='center', va='top', color='#58a6ff')
         
-        ax.text(0.55, y_pos, f"{i+1}. {name}", fontsize=11, color='#c9d1d9', va='top')
-        ax.text(0.85, y_pos, f"P&L: {pnl_str}", fontsize=11, color=color, va='top', fontweight='bold')
-    
-    # NO metrics
-    ax.text(0.55, metrics_y, "📊 NO METRICS", fontsize=12, fontweight='bold', 
-            color='#c9d1d9', va='top')
-    ax.text(0.55, metrics_y - 0.05, f"Avg All-Time P&L: ${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "Avg All-Time P&L: N/A", 
-            fontsize=10, color='#c9d1d9', va='top')
-    ax.text(0.55, metrics_y - 0.09, f"Total Capital: ${no_total_value:,}", 
-            fontsize=10, color='#c9d1d9', va='top')
-    
-    profitable_no = len(df_no[df_no['All-Time P&L'] > 0])
-    total_no = len(df_no[df_no['All-Time P&L'].notna()])
-    if total_no > 0:
-        win_rate = (profitable_no / total_no) * 100
-        ax.text(0.55, metrics_y - 0.13, f"Profitable: {profitable_no}/{total_no} ({win_rate:.0f}%)", 
+        # Calculate metrics
+        yes_avg_pnl = df_yes['All-Time P&L'].mean()
+        no_avg_pnl = df_no['All-Time P&L'].mean()
+        yes_total_value = df_yes['Value'].sum()
+        no_total_value = df_no['Value'].sum()
+        
+        # YES side (left)
+        yes_start_y = 0.82
+        ax.text(0.05, yes_start_y, "YES HOLDERS (Top 3)", fontsize=14, 
+                fontweight='bold', color='#38b449', va='top')
+        
+        # Top 3 YES holders
+        for i, (idx, row) in enumerate(df_yes.head(3).iterrows()):
+            y_pos = yes_start_y - 0.08 - (i * 0.08)
+            name = str(row['Name'])[:20]  # Truncate long names
+            pnl = row['All-Time P&L']
+            pnl_str = f"${pnl:,.0f}" if pd.notna(pnl) else "N/A"
+            color = '#38b449' if pd.notna(pnl) and pnl > 0 else '#f85149' if pd.notna(pnl) and pnl < 0 else '#8b949e'
+            
+            ax.text(0.05, y_pos, f"{i+1}. {name}", fontsize=11, color='#c9d1d9', va='top')
+            ax.text(0.35, y_pos, f"P&L: {pnl_str}", fontsize=11, color=color, va='top', fontweight='bold')
+        
+        # YES metrics
+        metrics_y = yes_start_y - 0.35
+        ax.text(0.05, metrics_y, "YES METRICS", fontsize=12, fontweight='bold', 
+                color='#c9d1d9', va='top')
+        ax.text(0.05, metrics_y - 0.05, f"Avg All-Time P&L: ${yes_avg_pnl:,.0f}" if pd.notna(yes_avg_pnl) else "Avg All-Time P&L: N/A", 
                 fontsize=10, color='#c9d1d9', va='top')
-    
-    # Smart Money Indicator
-    verdict_y = 0.25
-    ax.text(0.5, verdict_y, "💡 SMART MONEY INDICATOR", fontsize=13, 
-            fontweight='bold', ha='center', color='#58a6ff', va='top')
-    
-    if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl):
-        if yes_avg_pnl > no_avg_pnl:
-            diff = yes_avg_pnl - no_avg_pnl
-            verdict = f"YES holders are more profitable (+${diff:,.0f} vs NO)"
-            verdict_color = '#38b449'
-        elif no_avg_pnl > yes_avg_pnl:
-            diff = no_avg_pnl - yes_avg_pnl
-            verdict = f"NO holders are more profitable (+${diff:,.0f} vs YES)"
-            verdict_color = '#f85149'
+        ax.text(0.05, metrics_y - 0.09, f"Total Capital: ${yes_total_value:,}", 
+                fontsize=10, color='#c9d1d9', va='top')
+        
+        profitable_yes = len(df_yes[df_yes['All-Time P&L'] > 0])
+        total_yes = len(df_yes[df_yes['All-Time P&L'].notna()])
+        if total_yes > 0:
+            win_rate = (profitable_yes / total_yes) * 100
+            ax.text(0.05, metrics_y - 0.13, f"Profitable: {profitable_yes}/{total_yes} ({win_rate:.0f}%)", 
+                    fontsize=10, color='#c9d1d9', va='top')
+        
+        # NO side (right)
+        no_start_y = 0.82
+        ax.text(0.55, no_start_y, "NO HOLDERS (Top 3)", fontsize=14, 
+                fontweight='bold', color='#f85149', va='top')
+        
+        # Top 3 NO holders
+        for i, (idx, row) in enumerate(df_no.head(3).iterrows()):
+            y_pos = no_start_y - 0.08 - (i * 0.08)
+            name = str(row['Name'])[:20]  # Truncate long names
+            pnl = row['All-Time P&L']
+            pnl_str = f"${pnl:,.0f}" if pd.notna(pnl) else "N/A"
+            color = '#38b449' if pd.notna(pnl) and pnl > 0 else '#f85149' if pd.notna(pnl) and pnl < 0 else '#8b949e'
+            
+            ax.text(0.55, y_pos, f"{i+1}. {name}", fontsize=11, color='#c9d1d9', va='top')
+            ax.text(0.85, y_pos, f"P&L: {pnl_str}", fontsize=11, color=color, va='top', fontweight='bold')
+        
+        # NO metrics
+        ax.text(0.55, metrics_y, "NO METRICS", fontsize=12, fontweight='bold', 
+                color='#c9d1d9', va='top')
+        ax.text(0.55, metrics_y - 0.05, f"Avg All-Time P&L: ${no_avg_pnl:,.0f}" if pd.notna(no_avg_pnl) else "Avg All-Time P&L: N/A", 
+                fontsize=10, color='#c9d1d9', va='top')
+        ax.text(0.55, metrics_y - 0.09, f"Total Capital: ${no_total_value:,}", 
+                fontsize=10, color='#c9d1d9', va='top')
+        
+        profitable_no = len(df_no[df_no['All-Time P&L'] > 0])
+        total_no = len(df_no[df_no['All-Time P&L'].notna()])
+        if total_no > 0:
+            win_rate = (profitable_no / total_no) * 100
+            ax.text(0.55, metrics_y - 0.13, f"Profitable: {profitable_no}/{total_no} ({win_rate:.0f}%)", 
+                    fontsize=10, color='#c9d1d9', va='top')
+        
+        # Smart Money Indicator
+        verdict_y = 0.25
+        ax.text(0.5, verdict_y, "SMART MONEY INDICATOR", fontsize=13, 
+                fontweight='bold', ha='center', color='#58a6ff', va='top')
+        
+        if pd.notna(yes_avg_pnl) and pd.notna(no_avg_pnl):
+            if yes_avg_pnl > no_avg_pnl:
+                diff = yes_avg_pnl - no_avg_pnl
+                verdict = f"YES holders are more profitable (+${diff:,.0f} vs NO)"
+                verdict_color = '#38b449'
+            elif no_avg_pnl > yes_avg_pnl:
+                diff = no_avg_pnl - yes_avg_pnl
+                verdict = f"NO holders are more profitable (+${diff:,.0f} vs YES)"
+                verdict_color = '#f85149'
+            else:
+                verdict = "Both sides equally profitable"
+                verdict_color = '#c9d1d9'
         else:
-            verdict = "Both sides equally profitable"
-            verdict_color = '#c9d1d9'
-    else:
-        verdict = "Insufficient data for comparison"
-        verdict_color = '#8b949e'
+            verdict = "Insufficient data for comparison"
+            verdict_color = '#8b949e'
+        
+        ax.text(0.5, verdict_y - 0.06, verdict, fontsize=11, 
+                ha='center', color=verdict_color, va='top', fontweight='bold')
+        
+        # Footer
+        ax.text(0.5, 0.05, "Generated by Polymarket Whale Tracker", 
+                fontsize=9, ha='center', color='#8b949e', va='bottom')
+        ax.text(0.5, 0.02, "Track smart money on Polymarket", 
+                fontsize=8, ha='center', color='#8b949e', va='bottom', style='italic')
+        
+        # Save to BytesIO
+        buf = BytesIO()
+        plt.tight_layout()
+        plt.savefig(buf, format='png', dpi=150, facecolor='#0d1117', bbox_inches='tight')
+        buf.seek(0)
+        plt.close(fig)
+        
+        return buf
     
-    ax.text(0.5, verdict_y - 0.06, verdict, fontsize=11, 
-            ha='center', color=verdict_color, va='top', fontweight='bold')
-    
-    # Footer
-    ax.text(0.5, 0.05, "Generated by Polymarket Whale Tracker", 
-            fontsize=9, ha='center', color='#8b949e', va='bottom')
-    ax.text(0.5, 0.02, "Track smart money on Polymarket 🐋💰", 
-            fontsize=8, ha='center', color='#8b949e', va='bottom', style='italic')
-    
-    # Save to BytesIO
-    buf = BytesIO()
-    plt.tight_layout()
-    plt.savefig(buf, format='png', dpi=150, facecolor='#0d1117', bbox_inches='tight')
-    buf.seek(0)
-    plt.close()
-    
-    return buf
+    except Exception as e:
+        # If image generation fails, create a simple error image
+        st.error(f"Error generating image: {str(e)}")
+        fig, ax = plt.subplots(figsize=(8, 6), facecolor='#0d1117')
+        ax.set_facecolor('#0d1117')
+        ax.axis('off')
+        ax.text(0.5, 0.5, f"Error generating image\n{str(e)}", 
+                ha='center', va='center', color='#f85149', fontsize=12)
+        buf = BytesIO()
+        plt.savefig(buf, format='png', dpi=150, facecolor='#0d1117')
+        buf.seek(0)
+        plt.close(fig)
+        return buf
 
 
 # ===== MAIN APP (Updated to use new styling and functions) =====
@@ -602,45 +616,62 @@ if url:
             st.markdown("---")
             st.header("🐦 Share on Twitter")
             
-            col1, col2 = st.columns([1, 2])
+            st.markdown("**Share your analysis on Twitter!**")
+            st.markdown("Click below to generate a summary image and share it with your followers.")
             
-            with col1:
-                st.markdown("**Share your analysis on Twitter!**")
-                st.markdown("Click below to generate a summary image and share it with your followers.")
-                
-                if st.button("📸 Generate Share Image", type="primary", use_container_width=True):
+            # Generate image button
+            if st.button("📸 Generate Share Image", type="primary", key="generate_img"):
+                try:
                     with st.spinner("🎨 Creating summary image..."):
                         img_buffer = generate_summary_image(market_data.get('title'), df_yes, df_no)
                         
-                        # Display preview
-                        st.image(img_buffer, caption="Preview - Download and share on Twitter!", use_container_width=True)
-                        
-                        # Download button
-                        st.download_button(
-                            label="💾 Download Image",
-                            data=img_buffer,
-                            file_name=f"polymarket_analysis_{slug}.png",
-                            mime="image/png",
-                            use_container_width=True
-                        )
-                        
-                        # Twitter share button
-                        market_url = f"https://polymarket.com/event/{slug}"
-                        tweet_text = f"🐋 Whale Analysis: {market_data.get('title')[:80]}...\n\nCheck out who's betting big on Polymarket!\n\n"
-                        twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(market_url)}"
-                        
-                        st.markdown(f"[![Share on Twitter](https://img.shields.io/badge/Share_on-Twitter-1DA1F2?style=for-the-badge&logo=twitter&logoColor=white)]({twitter_url})")
-                        st.caption("⬆️ Click to share on Twitter (attach the downloaded image to your tweet)")
+                        # Store in session state
+                        st.session_state['share_image'] = img_buffer.getvalue()
+                        st.session_state['share_slug'] = slug
+                        st.session_state['share_title'] = market_data.get('title')
+                        st.success("✅ Image generated successfully!")
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Error generating image: {str(e)}")
+                    import traceback
+                    st.code(traceback.format_exc())
             
-            with col2:
-                st.info("💡 **Tip:** Download the image first, then click 'Share on Twitter' and attach the image to your tweet for maximum engagement!")
+            # Display image and buttons if generated
+            if 'share_image' in st.session_state:
+                st.image(st.session_state['share_image'], caption="Preview - Download and share on Twitter!", use_container_width=True)
+                
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Download button
+                    st.download_button(
+                        label="💾 Download Image",
+                        data=st.session_state['share_image'],
+                        file_name=f"polymarket_analysis_{st.session_state['share_slug']}.png",
+                        mime="image/png",
+                        use_container_width=True,
+                        key="download_img"
+                    )
+                
+                with col2:
+                    # Twitter share button
+                    market_url = f"https://polymarket.com/event/{st.session_state['share_slug']}"
+                    tweet_text = f"🐋 Whale Analysis: {st.session_state['share_title'][:80]}...\n\nCheck out who's betting big on Polymarket!\n\n"
+                    twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(market_url)}"
+                    
+                    st.link_button("🐦 Share on Twitter", twitter_url, use_container_width=True)
+                
                 st.markdown("""
+                **💡 Tip:** Download the image first, then click 'Share on Twitter' and attach the image to your tweet!
+                
                 **What's included in the image:**
                 - Top 3 YES and NO holders with their all-time P&L
                 - Key metrics for both sides
                 - Smart money indicator
                 - Professional branding
                 """)
+            else:
+                st.info("💡 **Tip:** Click the button above to generate a shareable image with top holders and metrics")
 
 st.markdown("---")
 st.caption("A tool for tracking large positions on Polymarket. Data fetched via Polymarket APIs. [GitHub Repository](https://github.com/geomanks/polymarket-holders)")
