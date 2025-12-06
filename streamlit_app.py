@@ -546,12 +546,11 @@ if url:
             st.markdown("### Capital and Profitability Overview")
             chart_col1, chart_col2 = st.columns(2)
             
-            # Chart 1: Total Capital - FIX APPLIED HERE (Explicit Type and Sorting)
+            # Chart 1: Total Capital - (Order fix already applied)
             base_capital = alt.Chart(comparison_df).encode(
                 x=alt.X('Total_Capital:Q', # Explicitly set as Quantitative
                         title='Total Capital ($)', 
                         axis=alt.Axis(format='$,.0f')),
-                # FIX: Explicitly set Y as Nominal and sort by the quantitative Total_Capital field
                 y=alt.Y('Side:N', 
                         title=None, 
                         sort=alt.EncodingSortField(field='Total_Capital', op='max', order='descending')),
@@ -564,23 +563,30 @@ if url:
             with chart_col1:
                 st.altair_chart(chart_capital, use_container_width=True)
                 
-            # Chart 2: Average All-Time P&L - Applying the same type explicit setting for robustness
+            # Chart 2: Average All-Time P&L - Visual Bug Fix applied here
             base_pnl = alt.Chart(comparison_df).encode(
                 x=alt.X('Avg_PNL:Q', # Explicitly set as Quantitative
                         title='Avg All-Time P&L ($)', 
                         axis=alt.Axis(format='$,.0f')),
-                y=alt.Y('Side:N', title=None), # Explicitly set as Nominal
-                color=alt.Color('Side', scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149'])),
+                # FIX 1: Explicitly set Y as Nominal.
+                y=alt.Y('Side:N', title=None), 
+                # FIX 2: Set color scale explicitly to GREEN for YES and RED for NO, and hide the legend
+                color=alt.Color('Side:N', 
+                                scale=alt.Scale(domain=['YES', 'NO'], range=['#38b449', '#f85149']),
+                                legend=None),
                 tooltip=['Side', alt.Tooltip('Avg_PNL', format='$,.0f')]
             )
+            
+            # Use conditional color for the bar based on P&L value (positive/negative)
             chart_pnl = base_pnl.mark_bar(opacity=0.8, cornerRadiusEnd=4).encode(
+                # We use the conditional color only for the bar fill property, keeping the color mapping for the legend hidden above.
                 color=alt.condition(
                     alt.datum.Avg_PNL < 0,
-                    alt.value('#f85149'),
-                    alt.value('#38b449')
+                    alt.value('#f85149'), # Red for negative
+                    alt.value('#38b449')  # Green for positive
                 )
             ).properties(title="Average All-Time Trader Profitability")
-
+            
             with chart_col2:
                 st.altair_chart(chart_pnl, use_container_width=True)
                         
