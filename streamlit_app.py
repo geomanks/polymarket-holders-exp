@@ -629,15 +629,49 @@ if url:
                         st.session_state['share_image'] = img_buffer.getvalue()
                         st.session_state['share_slug'] = slug
                         st.session_state['share_title'] = market_data.get('title')
+                        
+                        # Display immediately after generation
                         st.success("✅ Image generated successfully!")
-                        st.rerun()
+                        st.image(st.session_state['share_image'], caption="Preview - Download and share on Twitter!", use_container_width=True)
+                        
+                        col1, col2 = st.columns(2)
+                        
+                        with col1:
+                            # Download button
+                            st.download_button(
+                                label="💾 Download Image",
+                                data=st.session_state['share_image'],
+                                file_name=f"polymarket_analysis_{st.session_state['share_slug']}.png",
+                                mime="image/png",
+                                use_container_width=True,
+                                key="download_img"
+                            )
+                        
+                        with col2:
+                            # Twitter share button
+                            market_url = f"https://polymarket.com/event/{st.session_state['share_slug']}"
+                            tweet_text = f"🐋 Whale Analysis: {st.session_state['share_title'][:80]}...\n\nCheck out who's betting big on Polymarket!\n\n"
+                            twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(market_url)}"
+                            
+                            st.link_button("🐦 Share on Twitter", twitter_url, use_container_width=True)
+                        
+                        st.markdown("""
+                        **💡 Tip:** Download the image first, then click 'Share on Twitter' and attach the image to your tweet!
+                        
+                        **What's included in the image:**
+                        - Top 3 YES and NO holders with their all-time P&L
+                        - Key metrics for both sides
+                        - Smart money indicator
+                        - Professional branding
+                        """)
+                        
                 except Exception as e:
                     st.error(f"❌ Error generating image: {str(e)}")
                     import traceback
                     st.code(traceback.format_exc())
             
-            # Display image and buttons if generated
-            if 'share_image' in st.session_state:
+            # Display image and buttons if already generated (from session state)
+            elif 'share_image' in st.session_state and st.session_state.get('share_slug') == slug:
                 st.image(st.session_state['share_image'], caption="Preview - Download and share on Twitter!", use_container_width=True)
                 
                 col1, col2 = st.columns(2)
@@ -650,7 +684,7 @@ if url:
                         file_name=f"polymarket_analysis_{st.session_state['share_slug']}.png",
                         mime="image/png",
                         use_container_width=True,
-                        key="download_img"
+                        key="download_img_cached"
                     )
                 
                 with col2:
@@ -659,7 +693,7 @@ if url:
                     tweet_text = f"🐋 Whale Analysis: {st.session_state['share_title'][:80]}...\n\nCheck out who's betting big on Polymarket!\n\n"
                     twitter_url = f"https://twitter.com/intent/tweet?text={urllib.parse.quote(tweet_text)}&url={urllib.parse.quote(market_url)}"
                     
-                    st.link_button("🐦 Share on Twitter", twitter_url, use_container_width=True)
+                    st.link_button("🐦 Share on Twitter", twitter_url, use_container_width=True, key="twitter_cached")
                 
                 st.markdown("""
                 **💡 Tip:** Download the image first, then click 'Share on Twitter' and attach the image to your tweet!
